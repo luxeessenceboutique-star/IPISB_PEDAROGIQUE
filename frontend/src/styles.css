@@ -1,0 +1,487 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../src";
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-green: var(--brand-green);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-blue: var(--brand-blue);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-heading: var(--font-sans);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* IPISB brand palette */
+  --pal-ink:     oklch(22% 0.025 175);
+  --pal-ink2:    oklch(28% 0.04 175);
+  --pal-text:    oklch(34% 0.03 180);
+  --pal-muted:   oklch(48% 0.02 180);
+  --pal-primary: oklch(48% 0.085 175);
+  --pal-mid:     oklch(62% 0.085 170);
+  --pal-soft:    oklch(82% 0.045 165);
+  --pal-pale:    oklch(94% 0.025 165);
+  --pal-cream:   oklch(97% 0.012 90);
+  --pal-paper:   oklch(99% 0.005 160);
+  --pal-accent:  oklch(72% 0.11 60);
+  --pal-warn:    oklch(78% 0.12 80);
+  --pal-good:    oklch(70% 0.13 155);
+  --pal-danger:  oklch(64% 0.18 25);
+  --pal-line:    oklch(88% 0.015 170);
+  --pal-line-soft: oklch(92% 0.012 170);
+  --pal-primary-deep: oklch(38% 0.07 175);
+
+  /* IPISB Connect redesign — card shadows */
+  --shadow-card-2: 0 1px 3px oklch(0% 0 0 / .05), 0 6px 20px oklch(30% 0.03 175 / .06);
+  --shadow-pop:    0 4px 12px oklch(0% 0 0 / .08), 0 16px 48px oklch(30% 0.03 175 / .14);
+
+  /* Tailwind token mappings */
+  --background: var(--pal-paper);
+  --foreground: var(--pal-ink);
+  --card: var(--pal-paper);
+  --card-foreground: var(--pal-ink);
+  --popover: var(--pal-paper);
+  --popover-foreground: var(--pal-ink);
+  --primary: var(--pal-primary);
+  --primary-foreground: var(--pal-paper);
+  --secondary: var(--pal-pale);
+  --secondary-foreground: var(--pal-ink);
+  --muted: var(--pal-pale);
+  --muted-foreground: var(--pal-muted);
+  --accent: var(--pal-pale);
+  --accent-foreground: var(--pal-ink);
+  --destructive: var(--pal-danger);
+  --destructive-foreground: var(--pal-paper);
+  --border: var(--pal-line);
+  --input: var(--pal-line);
+  --ring: var(--pal-mid);
+
+  --sidebar: var(--pal-paper);
+  --sidebar-foreground: var(--pal-ink);
+  --sidebar-primary: var(--pal-primary);
+  --sidebar-primary-foreground: var(--pal-paper);
+  --sidebar-accent: var(--pal-pale);
+  --sidebar-accent-foreground: var(--pal-ink);
+  --sidebar-border: var(--pal-line);
+  --sidebar-ring: var(--pal-mid);
+  --chart-1: var(--pal-primary);
+  --chart-2: var(--pal-mid);
+  --chart-3: var(--pal-accent);
+  --chart-4: var(--pal-good);
+  --chart-5: var(--pal-warn);
+
+  --brand-green: var(--pal-good);
+  --brand-cyan:  var(--pal-mid);
+  --brand-blue:  var(--pal-primary);
+
+  --gradient-brand: linear-gradient(135deg, var(--pal-primary) 0%, var(--pal-mid) 100%);
+  --gradient-soft:  linear-gradient(135deg, var(--pal-pale) 0%, var(--pal-cream) 100%);
+  --shadow-card: 0 1px 4px oklch(0% 0 0 / .06), 0 4px 16px oklch(0% 0 0 / .04);
+  --shadow-glow: 0 0 24px oklch(48% 0.085 175 / .25);
+}
+
+.dark {
+  --background: var(--pal-ink);
+  --foreground: var(--pal-paper);
+  --card: var(--pal-ink2);
+  --card-foreground: var(--pal-paper);
+  --popover: var(--pal-ink2);
+  --popover-foreground: var(--pal-paper);
+  --primary: var(--pal-mid);
+  --primary-foreground: var(--pal-paper);
+  --secondary: var(--pal-ink2);
+  --secondary-foreground: var(--pal-paper);
+  --muted: var(--pal-ink2);
+  --muted-foreground: var(--pal-soft);
+  --accent: var(--pal-ink2);
+  --accent-foreground: var(--pal-paper);
+  --destructive: var(--pal-danger);
+  --destructive-foreground: var(--pal-paper);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--pal-mid);
+  --sidebar: var(--pal-ink2);
+  --sidebar-foreground: var(--pal-paper);
+  --sidebar-primary: var(--pal-primary);
+  --sidebar-primary-foreground: var(--pal-paper);
+  --sidebar-accent: var(--pal-ink);
+  --sidebar-accent-foreground: var(--pal-paper);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: var(--pal-mid);
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  * { border-color: var(--color-border);
+    @apply border-border outline-ring/50; }
+  body {
+    background-color: var(--pal-cream);
+    color: var(--pal-ink);
+    font-family: var(--font-sans);
+    @apply text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@utility text-gradient-brand {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-gradient-brand {
+  background: var(--gradient-brand);
+}
+
+@utility bg-gradient-soft {
+  background: var(--gradient-soft);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Landing animations ──────────────────────────────────── */
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-14px) rotate(0deg); }
+}
+@keyframes notif-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(64% 0.18 25 / .55); }
+  50%       { box-shadow: 0 0 0 7px oklch(64% 0.18 25 / 0); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: .7; }
+  50%       { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up-d1 {
+  0%, 10% { opacity: 0; transform: translateY(32px); }
+  100%    { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up-d2 {
+  0%, 25% { opacity: 0; transform: translateY(32px); }
+  100%    { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up-d3 {
+  0%, 40% { opacity: 0; transform: translateY(32px); }
+  100%    { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up-d4 {
+  0%, 55% { opacity: 0; transform: translateY(32px); }
+  100%    { opacity: 1; transform: translateY(0); }
+}
+@keyframes bar-fill {
+  from { width: 0%; }
+}
+@keyframes nav-shrink {
+  from { padding: 18px 32px; }
+  to   { padding: 10px 32px; }
+}
+
+/* ── Motion & interaction utilities (2026 polish pass) ───────── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in-soft {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shimmer-sweep {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* Entrance helpers — usable from inline-styled components */
+.anim-rise   { animation: rise .6s cubic-bezier(.22,1,.36,1) both; }
+.anim-rise-1 { animation: rise .6s cubic-bezier(.22,1,.36,1) .08s both; }
+.anim-rise-2 { animation: rise .6s cubic-bezier(.22,1,.36,1) .16s both; }
+.anim-rise-3 { animation: rise .6s cubic-bezier(.22,1,.36,1) .26s both; }
+.anim-rise-4 { animation: rise .6s cubic-bezier(.22,1,.36,1) .36s both; }
+.anim-pop    { animation: pop-in .28s cubic-bezier(.22,1,.36,1) both; }
+.anim-fade   { animation: fade-in-soft .22s ease both; }
+
+/* Route-content entrance (dashboard + public pages).
+   NOTE: fill-mode "backwards" (not "both") — a retained transform would make
+   this wrapper the containing block for position:fixed overlays inside routes
+   (Jitsi room, custom dialogs), breaking their full-screen positioning. */
+.page-enter { animation: rise .4s cubic-bezier(.22,1,.36,1) backwards; }
+
+/* Hover micro-interactions for buttons / pills (no inline transform conflicts) */
+.u-hover-lift {
+  transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease,
+              background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  will-change: transform;
+}
+.u-hover-lift:hover  { transform: translateY(-2px); box-shadow: 0 10px 28px oklch(0% 0 0 / .14); }
+.u-hover-lift:active { transform: translateY(0) scale(.98); box-shadow: 0 4px 12px oklch(0% 0 0 / .10); }
+
+/* Card lift — transform only (cards often own their box-shadow inline) */
+.u-card-lift { transition: transform .25s cubic-bezier(.22,1,.36,1); will-change: transform; }
+.u-card-lift:hover { transform: translateY(-3px); }
+
+/* Hover color helpers for inline-styled links (inline styles need !important) */
+.u-link-ink:hover     { color: var(--pal-ink) !important; }
+.u-link-primary:hover { color: var(--pal-primary) !important; }
+
+/* Ghost button hover (logout, cancel, etc.) */
+.u-ghost { transition: background-color .18s ease, color .18s ease, border-color .18s ease; }
+.u-ghost:hover { background: var(--pal-pale) !important; color: var(--pal-ink) !important; border-color: var(--pal-soft) !important; }
+
+/* Inputs / selects — focus ring (overrides inline border) */
+.u-input { transition: border-color .18s ease, box-shadow .18s ease; }
+.u-input:focus {
+  border-color: var(--pal-primary) !important;
+  box-shadow: 0 0 0 3px oklch(48% 0.085 175 / .14);
+}
+
+/* Dashboard sidebar links — IPISB Connect redesign */
+.side-link {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13.5px; font-weight: 600;
+  color: var(--pal-muted);
+  background: transparent;
+  position: relative;
+  transition: background-color .15s ease, color .15s ease;
+}
+.side-link:hover { background: var(--pal-pale); color: var(--pal-ink); }
+.side-link.is-active { background: var(--pal-pale); color: var(--pal-primary-deep); font-weight: 700; }
+.side-link.is-active::before {
+  content: ''; position: absolute; inset-inline-start: -16px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 99px; background: var(--pal-primary);
+}
+.side-link svg { flex-shrink: 0; opacity: .75; transition: opacity .15s ease; }
+.side-link.is-active svg { opacity: 1; }
+
+/* Skeleton shimmer for inline-styled pages */
+.shimmer {
+  background: linear-gradient(90deg, var(--pal-pale) 25%, oklch(97.5% 0.008 165) 50%, var(--pal-pale) 75%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.4s linear infinite;
+}
+
+/* ── IPISB Connect redesign — component classes ───────────────── */
+.dash-card {
+  background: var(--pal-paper);
+  border: 1px solid var(--pal-line-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card-2);
+}
+
+.h-serif {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: .005em;
+  color: var(--pal-ink);
+}
+
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--pal-muted);
+}
+
+.stat-num {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--pal-ink);
+  font-variant-numeric: oldstyle-nums;
+}
+
+.btn-c {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  text-decoration: none;
+  transition: background .18s, color .18s, border-color .18s, transform .12s, box-shadow .18s;
+  white-space: nowrap;
+}
+.btn-c:active { transform: scale(.97); }
+.btn-c:disabled { opacity: .55; cursor: not-allowed; }
+.btn-c-primary { background: var(--pal-ink); color: var(--pal-paper); }
+.btn-c-primary:hover { background: var(--pal-primary-deep); }
+.btn-c-green { background: var(--pal-primary); color: var(--pal-paper); }
+.btn-c-green:hover { background: var(--pal-primary-deep); }
+.btn-c-ghost { background: transparent; color: var(--pal-text); border-color: var(--pal-line); }
+.btn-c-ghost:hover { border-color: var(--pal-mid); color: var(--pal-primary-deep); background: var(--pal-paper); }
+.btn-c-soft { background: var(--pal-pale); color: var(--pal-primary-deep); }
+.btn-c-soft:hover { background: var(--pal-soft); }
+.btn-c-danger { background: var(--pal-danger); color: var(--pal-paper); }
+.btn-c-danger:hover { filter: brightness(.92); }
+.btn-c-sm { padding: 6px 13px; font-size: 12px; }
+
+.chip-c {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--pal-line);
+  background: var(--pal-paper); color: var(--pal-muted);
+  white-space: nowrap;
+}
+.chip-c-green { background: var(--pal-pale); border-color: transparent; color: var(--pal-primary-deep); }
+.chip-c-amber { background: oklch(95% 0.04 80); border-color: transparent; color: oklch(50% 0.1 70); }
+.chip-c-red   { background: oklch(95% 0.03 25); border-color: transparent; color: oklch(50% 0.15 25); }
+.chip-c-blue  { background: oklch(94% 0.03 250); border-color: transparent; color: oklch(40% 0.09 250); }
+.chip-c-ink   { background: var(--pal-ink); border-color: transparent; color: var(--pal-paper); }
+
+.row-c {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--pal-line-soft);
+  transition: background .15s;
+}
+.row-c:hover { background: var(--pal-cream); }
+.row-c:first-child { border-top: 0; }
+
+.input-c {
+  font-family: 'Manrope', system-ui, sans-serif; font-size: 13px; color: var(--pal-ink);
+  background: var(--pal-paper); border: 1px solid var(--pal-line);
+  border-radius: 10px; padding: 9px 13px;
+  outline: none; transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+}
+.input-c::placeholder { color: var(--pal-muted); opacity: .7; }
+.input-c:focus { border-color: var(--pal-mid); box-shadow: 0 0 0 3px var(--pal-pale); }
+
+.tab-c {
+  font-family: 'Manrope', system-ui, sans-serif; font-size: 12.5px; font-weight: 700;
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--pal-muted); cursor: pointer; transition: all .15s;
+}
+.tab-c:hover { color: var(--pal-ink); }
+.tab-c.is-active { background: var(--pal-ink); color: var(--pal-paper); }
+
+/* card hover lift (transform only — see page-enter note) */
+.lift-c { transition: transform .18s, box-shadow .18s; }
+.lift-c:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop); }
+
+/* card entrance — transform-only on purpose: if the animation never runs
+   (reduced motion, hydration edge case) content must remain visible */
+@keyframes card-pop {
+  from { transform: translateY(6px) scale(.99); }
+  to   { transform: none; }
+}
+.card-pop { animation: card-pop .4s cubic-bezier(.22,1,.36,1) backwards; }
+
+/* thin brand scrollbar */
+.scroll-y { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--pal-soft) transparent; }
+.scroll-y::-webkit-scrollbar { width: 8px; }
+.scroll-y::-webkit-scrollbar-thumb { background: var(--pal-soft); border-radius: 99px; }
+
+/* ── Deep-link : ligne/carte ciblée par un clic sur une notification ──
+   Défilement piloté en JS (useDeepLinkFocus) ; ici juste le repère visuel.
+   `both` garde l'état final (transparent) même si la classe reste posée. */
+@keyframes deep-link-flash {
+  0%, 65% { background-color: var(--pal-pale); }
+  100%    { background-color: transparent; }
+}
+.deep-link-focus,
+.deep-link-focus > td {
+  animation: deep-link-flash 3s ease-out both;
+}
+.deep-link-focus {
+  outline: 2px solid var(--pal-primary);
+  outline-offset: -2px;
+  border-radius: 8px;
+  scroll-margin-block: 96px;
+}
+
+/* ── Accessibility ────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--pal-mid);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  html { scroll-behavior: auto !important; }
+}

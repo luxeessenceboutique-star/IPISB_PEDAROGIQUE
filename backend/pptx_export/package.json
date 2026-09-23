@@ -1,0 +1,13 @@
+{
+  "name": "ipisb-course-template",
+  "version": "1.0.0",
+  "description": "PowerPoint course template generator for IPISB (Institut Privé d'Innovation en Santé et Bien-Être)",
+  "private": true,
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1",
+    "jszip": "^3.10.1"
+  }
+}

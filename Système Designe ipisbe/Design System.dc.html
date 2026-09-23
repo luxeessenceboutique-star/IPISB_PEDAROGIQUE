@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:oklch(97% 0.012 90);font-family:'Manrope',sans-serif;color:oklch(34% 0.03 180);-webkit-font-smoothing:antialiased}
+    ::selection{background:oklch(82% 0.045 165)}
+    @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+
+<div style="max-width:1180px;margin:0 auto;padding:0 40px 120px">
+
+  <!-- ============ HEADER ============ -->
+  <header style="padding:72px 0 56px;border-bottom:1px solid oklch(88% 0.015 170)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+      <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,oklch(48% 0.085 175) 0%,oklch(62% 0.085 170) 100%);box-shadow:0 0 24px oklch(48% 0.085 175/.25)"></div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.1em;color:oklch(48% 0.085 175)">IPISB&nbsp;CONNECT</span>
+    </div>
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(48% 0.02 180);margin-bottom:18px">Design System Reference</div>
+    <h1 style="font-family:'Cormorant Garamond',serif;font-size:clamp(56px,7vw,92px);font-weight:500;line-height:0.97;letter-spacing:-0.01em;color:oklch(22% 0.025 175);max-width:13ch">Le langage visuel du produit.</h1>
+    <p style="font-family:'Manrope',sans-serif;font-size:17px;line-height:1.6;color:oklch(48% 0.02 180);max-width:58ch;margin-top:26px">Référence officielle des couleurs, de la typographie et des composants. À utiliser pour tout nouveau composant ou page afin de garantir la cohérence de l'interface.</p>
+    <nav style="display:flex;flex-wrap:wrap;gap:8px;margin-top:34px">
+      <sc-for list="{{ toc }}" as="t" hint-placeholder-count="8">
+        <a href="{{ t.href }}" style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:oklch(38% 0.07 175);text-decoration:none;padding:6px 12px;border:1px solid oklch(88% 0.015 170);border-radius:9999px;background:oklch(99% 0.005 160)" style-hover="background:oklch(94% 0.025 165);border-color:oklch(62% 0.085 170)">{{ t.label }}</a>
+      </sc-for>
+    </nav>
+  </header>
+
+  <!-- ============ COLORS ============ -->
+  <section id="couleurs" style="padding:72px 0 0">
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">01 — Couleurs</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:500;line-height:1.05;color:oklch(22% 0.025 175);letter-spacing:-0.01em">Palette OKLCH</h2>
+    <p style="font-size:14px;color:oklch(48% 0.02 180);margin-top:12px;max-width:54ch">Teal brand sur fonds chauds neutres. Toutes les couleurs sont définies en OKLCH pour un rendu perceptuellement uniforme.</p>
+
+    <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(48% 0.02 180);margin:40px 0 16px">Palette principale</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">
+      <sc-for list="{{ palette }}" as="c" hint-placeholder-count="12">
+        <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:14px;overflow:hidden;box-shadow:0 1px 4px oklch(0% 0 0/.06),0 4px 16px oklch(0% 0 0/.04)">
+          <div style="height:78px;background:{{ c.v }};border-bottom:1px solid oklch(0% 0 0/.05)"></div>
+          <div style="padding:12px 13px 14px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:oklch(22% 0.025 175)">{{ c.name }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(48% 0.02 180);margin-top:3px">{{ c.v }}</div>
+            <div style="font-size:11.5px;color:oklch(48% 0.02 180);margin-top:8px;line-height:1.4">{{ c.usage }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(48% 0.02 180);margin:44px 0 16px">Couleurs sémantiques</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">
+      <sc-for list="{{ semantic }}" as="c" hint-placeholder-count="4">
+        <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:14px;overflow:hidden;box-shadow:0 1px 4px oklch(0% 0 0/.06),0 4px 16px oklch(0% 0 0/.04)">
+          <div style="height:78px;background:{{ c.v }}"></div>
+          <div style="padding:12px 13px 14px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:oklch(22% 0.025 175)">{{ c.name }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(48% 0.02 180);margin-top:3px">{{ c.v }}</div>
+            <div style="font-size:11.5px;color:oklch(48% 0.02 180);margin-top:8px;line-height:1.4">{{ c.usage }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- gradients + dark mode row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:24px">
+      <div style="border-radius:14px;overflow:hidden;border:1px solid oklch(92% 0.012 170)">
+        <div style="height:96px;background:linear-gradient(135deg,oklch(48% 0.085 175) 0%,oklch(62% 0.085 170) 100%)"></div>
+        <div style="padding:12px 14px;background:oklch(99% 0.005 160)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:oklch(22% 0.025 175)">--gradient-brand</div></div>
+      </div>
+      <div style="border-radius:14px;overflow:hidden;border:1px solid oklch(92% 0.012 170)">
+        <div style="height:96px;background:linear-gradient(135deg,oklch(94% 0.025 165) 0%,oklch(97% 0.012 90) 100%)"></div>
+        <div style="padding:12px 14px;background:oklch(99% 0.005 160)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:oklch(22% 0.025 175)">--gradient-soft</div></div>
+      </div>
+      <div style="border-radius:14px;overflow:hidden;border:1px solid oklch(28% 0.04 175);background:oklch(22% 0.025 175);padding:16px 16px 18px">
+        <div style="font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">Dark mode</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div style="flex:1;height:34px;border-radius:8px;background:oklch(28% 0.04 175);border:1px solid oklch(1 0 0/.1)"></div>
+          <div style="flex:1;height:34px;border-radius:8px;background:oklch(62% 0.085 170)"></div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(82% 0.045 165);line-height:1.6">bg → --pal-ink<br>card → --pal-ink2<br>primary → --pal-mid</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TYPOGRAPHY ============ -->
+  <section id="typo" style="padding:80px 0 0">
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">02 — Typographie</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:500;line-height:1.05;color:oklch(22% 0.025 175);letter-spacing:-0.01em">Serif &amp; Sans</h2>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:36px">
+      <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:14px;padding:24px 22px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(62% 0.085 170)">Display</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:66px;font-weight:500;line-height:1;color:oklch(22% 0.025 175);margin:10px 0 14px">Aa</div>
+        <div style="font-size:14px;font-weight:600;color:oklch(34% 0.03 180)">Cormorant Garamond</div>
+        <div style="font-size:12px;color:oklch(48% 0.02 180);margin-top:3px">400 · 500 · 600 · 700</div>
+      </div>
+      <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:14px;padding:24px 22px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(62% 0.085 170)">Corps / UI</div>
+        <div style="font-family:'Manrope',sans-serif;font-size:66px;font-weight:700;line-height:1;color:oklch(22% 0.025 175);margin:10px 0 14px">Aa</div>
+        <div style="font-size:14px;font-weight:600;color:oklch(34% 0.03 180)">Manrope</div>
+        <div style="font-size:12px;color:oklch(48% 0.02 180);margin-top:3px">400 · 500 · 600 · 700 · 800</div>
+      </div>
+      <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:14px;padding:24px 22px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(62% 0.085 170)">Code</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:60px;font-weight:700;line-height:1;color:oklch(22% 0.025 175);margin:10px 0 14px">Aa</div>
+        <div style="font-size:14px;font-weight:600;color:oklch(34% 0.03 180)">JetBrains Mono</div>
+        <div style="font-size:12px;color:oklch(48% 0.02 180);margin-top:3px">400 · 600 · 700</div>
+      </div>
+    </div>
+
+    <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:14px;margin-top:14px;overflow:hidden">
+      <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:baseline;padding:20px 24px;border-bottom:1px solid oklch(92% 0.012 170)">
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:oklch(22% 0.025 175)">{{ t.label }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(48% 0.02 180);margin-top:4px">{{ t.spec }}</div>
+          </div>
+          <div style="{{ t.style }}">{{ t.sample }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- ============ RADIUS + SHADOWS ============ -->
+  <section id="forme" style="padding:80px 0 0">
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">03 — Forme</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:500;line-height:1.05;color:oklch(22% 0.025 175);letter-spacing:-0.01em">Rayons &amp; Ombres</h2>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px;align-items:start">
+      <div>
+        <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(48% 0.02 180);margin-bottom:16px">Border radius</div>
+        <div style="display:flex;flex-wrap:wrap;gap:18px">
+          <sc-for list="{{ radii }}" as="r" hint-placeholder-count="6">
+            <div style="text-align:center">
+              <div style="width:72px;height:72px;background:oklch(94% 0.025 165);border:1.5px solid oklch(62% 0.085 170);border-top-left-radius:{{ r.v }};border-top-right-radius:{{ r.v }}"></div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:oklch(22% 0.025 175);margin-top:8px">{{ r.label }}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:oklch(48% 0.02 180);margin-top:2px">{{ r.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:oklch(48% 0.02 180);margin-bottom:16px">Shadows</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+          <sc-for list="{{ shadows }}" as="s" hint-placeholder-count="4">
+            <div style="background:oklch(99% 0.005 160);border-radius:14px;padding:18px;box-shadow:{{ s.v }}">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:oklch(22% 0.025 175)">{{ s.label }}</div>
+              <div style="font-size:11px;color:oklch(48% 0.02 180);margin-top:5px">{{ s.usage }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BUTTONS ============ -->
+  <section id="boutons" style="padding:80px 0 0">
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">04 — Composants</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:500;line-height:1.05;color:oklch(22% 0.025 175);letter-spacing:-0.01em">Boutons</h2>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:34px;padding:30px;background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:18px">
+      <button style="font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;height:36px;padding:0 16px;border:none;border-radius:8px;color:oklch(99% 0.005 160);background:oklch(48% 0.085 175);cursor:pointer" style-hover="background:oklch(38% 0.07 175)">Default</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;height:36px;padding:0 16px;border:1px solid oklch(88% 0.015 170);border-radius:8px;color:oklch(34% 0.03 180);background:transparent;cursor:pointer" style-hover="background:oklch(94% 0.025 165)">Outline</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;height:36px;padding:0 16px;border:none;border-radius:8px;color:oklch(34% 0.03 180);background:oklch(94% 0.025 165);cursor:pointer" style-hover="background:oklch(88% 0.015 170)">Secondary</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;height:36px;padding:0 16px;border:none;border-radius:8px;color:oklch(34% 0.03 180);background:transparent;cursor:pointer" style-hover="background:oklch(94% 0.025 165)">Ghost</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;height:36px;padding:0 16px;border:none;border-radius:8px;color:oklch(64% 0.18 25);background:oklch(64% 0.18 25/.1);cursor:pointer" style-hover="background:oklch(64% 0.18 25);color:oklch(99% 0.005 160)">Destructive</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;height:36px;padding:0 6px;border:none;border-radius:8px;color:oklch(48% 0.085 175);background:transparent;cursor:pointer;text-decoration:underline;text-underline-offset:3px">Link</button>
+    </div>
+
+    <!-- sizes -->
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px;padding:30px;background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:18px">
+      <button style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;height:24px;padding:0 8px;border:none;border-radius:6px;color:oklch(99% 0.005 160);background:oklch(48% 0.085 175);cursor:pointer">xs</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:12.8px;font-weight:700;height:28px;padding:0 10px;border:none;border-radius:7px;color:oklch(99% 0.005 160);background:oklch(48% 0.085 175);cursor:pointer">sm</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;height:32px;padding:0 10px;border:none;border-radius:8px;color:oklch(99% 0.005 160);background:oklch(48% 0.085 175);cursor:pointer">default</button>
+      <button style="font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;height:36px;padding:0 10px;border:none;border-radius:8px;color:oklch(99% 0.005 160);background:oklch(48% 0.085 175);cursor:pointer">lg</button>
+      <button style="width:32px;height:32px;border:none;border-radius:8px;color:oklch(99% 0.005 160);background:oklch(22% 0.025 175);cursor:pointer;font-size:15px">＋</button>
+    </div>
+  </section>
+
+  <!-- ============ CARDS + INPUTS + BADGES ============ -->
+  <section id="cartes" style="padding:80px 0 0">
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">05 — Surfaces &amp; contrôles</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:500;line-height:1.05;color:oklch(22% 0.025 175);letter-spacing:-0.01em">Cartes, Inputs, Badges</h2>
+
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:14px;margin-top:36px;align-items:start">
+
+      <!-- dash-card example -->
+      <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:16px;box-shadow:0 1px 3px oklch(0% 0 0/.05),0 6px 20px oklch(30% 0.03 175/.06);padding:22px 22px 24px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+          <div>
+            <div style="font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(48% 0.02 180)">Inscriptions</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:500;line-height:1;color:oklch(22% 0.025 175);margin-top:8px;font-variant-numeric:oldstyle-nums">1 284</div>
+          </div>
+          <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;color:oklch(38% 0.07 175);background:oklch(94% 0.025 165);border-radius:10px;padding:3px 10px">+12%</span>
+        </div>
+        <div style="height:1px;background:oklch(92% 0.012 170);margin-bottom:16px"></div>
+        <div style="font-size:13px;line-height:1.6;color:oklch(48% 0.02 180)">Classe <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:oklch(38% 0.07 175)">.dash-card</code> — fond paper, bordure line-soft, rayon 16px et shadow-card-2.</div>
+      </div>
+
+      <!-- inputs + badges -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:16px;padding:22px">
+          <div style="font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(48% 0.02 180);margin-bottom:12px">Input</div>
+          <input value="{{ inputVal }}" onChange="{{ onInput }}" placeholder="email@ipisb.org" style="width:100%;height:32px;padding:9px 13px;border-radius:8px;border:1px solid oklch(88% 0.015 170);font-family:'Manrope',sans-serif;font-size:13px;color:oklch(34% 0.03 180);background:oklch(99% 0.005 160);outline:none" style-focus="border-color:oklch(62% 0.085 170);box-shadow:0 0 0 3px oklch(94% 0.025 165)">
+        </div>
+        <div style="background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:16px;padding:22px">
+          <div style="font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(48% 0.02 180);margin-bottom:14px">Chips</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;border-radius:10px;padding:3px 10px;background:oklch(94% 0.025 165);color:oklch(38% 0.07 175)">Validé</span>
+            <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;border-radius:10px;padding:3px 10px;background:oklch(95% 0.04 80);color:oklch(50% 0.1 70)">En attente</span>
+            <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;border-radius:10px;padding:3px 10px;background:oklch(95% 0.03 25);color:oklch(50% 0.15 25)">Refusé</span>
+            <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;border-radius:10px;padding:3px 10px;background:oklch(94% 0.03 250);color:oklch(40% 0.09 250)">Info</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SIDEBAR ============ -->
+  <section id="nav" style="padding:80px 0 0">
+    <div style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(62% 0.085 170);margin-bottom:12px">06 — Navigation</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:500;line-height:1.05;color:oklch(22% 0.025 175);letter-spacing:-0.01em">Sidebar</h2>
+
+    <div style="display:flex;gap:14px;margin-top:34px;align-items:stretch">
+      <div style="width:256px;flex:none;background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:16px;padding:14px 12px">
+        <sc-for list="{{ navLinks }}" as="n" hint-placeholder-count="5">
+          <div style="{{ n.style }}">{{ n.label }}</div>
+        </sc-for>
+      </div>
+      <div style="flex:1;background:oklch(99% 0.005 160);border:1px solid oklch(92% 0.012 170);border-radius:16px;padding:26px;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:oklch(48% 0.02 180);line-height:2">
+          étendue : <span style="color:oklch(38% 0.07 175);font-weight:700">256px</span><br>
+          réduite : <span style="color:oklch(38% 0.07 175);font-weight:700">48px</span><br>
+          mobile : <span style="color:oklch(38% 0.07 175);font-weight:700">288px</span><br>
+          <br>
+          .side-link active → barre gauche 3px primary,<br>fond pale, texte primary-deep, bold
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="margin-top:90px;padding-top:34px;border-top:1px solid oklch(88% 0.015 170);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:oklch(48% 0.02 180)">IPISB&nbsp;Connect · Design System v1</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:oklch(48% 0.02 180)">Tailwind v4 · shadcn/ui · Radix · OKLCH</span>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { inputVal: "" };
+
+  renderVals() {
+    const sansLabel = "font-family:'Manrope',sans-serif";
+    const sideBase = "font-family:'Manrope',sans-serif;font-size:13.5px;padding:9px 12px;border-radius:10px;margin-bottom:2px;cursor:pointer;";
+    return {
+      inputVal: this.state.inputVal,
+      onInput: (e) => this.setState({ inputVal: e.target.value }),
+
+      toc: [
+        { label: "Couleurs", href: "#couleurs" },
+        { label: "Typographie", href: "#typo" },
+        { label: "Forme", href: "#forme" },
+        { label: "Boutons", href: "#boutons" },
+        { label: "Cartes", href: "#cartes" },
+        { label: "Navigation", href: "#nav" },
+      ],
+
+      palette: [
+        { name: "--pal-ink", v: "oklch(22% 0.025 175)", usage: "Texte principal / fond dark" },
+        { name: "--pal-text", v: "oklch(34% 0.03 180)", usage: "Corps de texte" },
+        { name: "--pal-muted", v: "oklch(48% 0.02 180)", usage: "Texte secondaire" },
+        { name: "--pal-primary", v: "oklch(48% 0.085 175)", usage: "Brand principale (teal)" },
+        { name: "--pal-primary-deep", v: "oklch(38% 0.07 175)", usage: "Hover du primary" },
+        { name: "--pal-mid", v: "oklch(62% 0.085 170)", usage: "Accent teal clair" },
+        { name: "--pal-soft", v: "oklch(82% 0.045 165)", usage: "Fond doux" },
+        { name: "--pal-pale", v: "oklch(94% 0.025 165)", usage: "Hover / fonds clairs" },
+        { name: "--pal-cream", v: "oklch(97% 0.012 90)", usage: "Fond body (blanc chaud)" },
+        { name: "--pal-paper", v: "oklch(99% 0.005 160)", usage: "Blanc pur / cartes" },
+        { name: "--pal-line", v: "oklch(88% 0.015 170)", usage: "Bordures" },
+        { name: "--pal-line-soft", v: "oklch(92% 0.012 170)", usage: "Bordures subtiles" },
+      ],
+
+      semantic: [
+        { name: "--pal-accent", v: "oklch(72% 0.11 60)", usage: "Ambre / jaune accent" },
+        { name: "--pal-warn", v: "oklch(78% 0.12 80)", usage: "Avertissement chaud" },
+        { name: "--pal-good", v: "oklch(70% 0.13 155)", usage: "Succès / vert" },
+        { name: "--pal-danger", v: "oklch(64% 0.18 25)", usage: "Erreur / rouge" },
+      ],
+
+      typeScale: [
+        { label: "Hero H1", spec: "Serif · 96px · 500", sample: "Le congrès annuel", style: "font-family:'Cormorant Garamond',serif;font-size:54px;font-weight:500;line-height:0.97;color:oklch(22% 0.025 175)" },
+        { label: "Heading", spec: "Serif · 34px · 600", sample: "Programme des sessions", style: "font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:oklch(22% 0.025 175)" },
+        { label: "Body large", spec: "Sans · 17px · 400 · 1.6", sample: "Texte d'introduction lisible et aéré pour les paragraphes principaux.", style: "font-family:'Manrope',sans-serif;font-size:17px;font-weight:400;line-height:1.6;color:oklch(34% 0.03 180)" },
+        { label: "Eyebrow", spec: "Sans · 11px · 700 · 0.18em", sample: "SESSION PLÉNIÈRE", style: "font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:oklch(48% 0.02 180)" },
+        { label: "Stat number", spec: "Serif · 38px · oldstyle", sample: "1 284", style: "font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:500;font-variant-numeric:oldstyle-nums;color:oklch(48% 0.085 175)" },
+        { label: "Caption", spec: "Sans · 12px · 400", sample: "Note de bas de page et légendes.", style: "font-family:'Manrope',sans-serif;font-size:12px;font-weight:400;color:oklch(48% 0.02 180)" },
+      ],
+
+      radii: [
+        { label: "sm", v: "6px" },
+        { label: "md", v: "8px" },
+        { label: "lg", v: "10px" },
+        { label: "xl", v: "14px" },
+        { label: "2xl", v: "18px" },
+        { label: "full", v: "9999px" },
+      ],
+
+      shadows: [
+        { label: "--shadow-card", usage: "Cartes au repos", v: "0 1px 4px oklch(0% 0 0/.06), 0 4px 16px oklch(0% 0 0/.04)" },
+        { label: "--shadow-card-2", usage: "Dashboard cards", v: "0 1px 3px oklch(0% 0 0/.05), 0 6px 20px oklch(30% 0.03 175/.06)" },
+        { label: "--shadow-pop", usage: "Popovers / menus", v: "0 4px 12px oklch(0% 0 0/.08), 0 16px 48px oklch(30% 0.03 175/.14)" },
+        { label: "--shadow-glow", usage: "Éléments brand", v: "0 0 24px oklch(48% 0.085 175/.25)" },
+      ],
+
+      navLinks: [
+        { label: "Tableau de bord", style: sideBase + "background:oklch(94% 0.025 165);color:oklch(38% 0.07 175);font-weight:700;border-left:3px solid oklch(48% 0.085 175);padding-left:13px" },
+        { label: "Inscriptions", style: sideBase + "color:oklch(48% 0.02 180)" },
+        { label: "Sessions", style: sideBase + "color:oklch(48% 0.02 180)" },
+        { label: "Intervenants", style: sideBase + "color:oklch(48% 0.02 180)" },
+        { label: "Paramètres", style: sideBase + "color:oklch(48% 0.02 180)" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

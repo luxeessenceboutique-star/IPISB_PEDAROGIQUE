@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:9000/openapi.json)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(p\\) for p in sorted\\(d['paths']\\) if 'reception' in p or 'payment' in p or 'inventory' in p]\")",
+      "Bash(backend/venv/Scripts/python.exe -m py_compile backend/routers/accounting_receptions.py)",
+      "Bash(/c/Users/USER/Desktop/Projet/IPISB-CONNECT/backend/venv/Scripts/python.exe -m py_compile /c/Users/USER/Desktop/Projet/IPISB-CONNECT/backend/routers/accounting_receptions.py)"
+    ]
+  }
+}
