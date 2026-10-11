@@ -114,7 +114,7 @@ function DashboardLayout() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   useEffect(() => {
     if (!user || !canManageClasses) { setSpecialties([]); return; }
-    api.get("/api/specialties").then(setSpecialties).catch(() => setSpecialties([]));
+    api.get("/api/specialties").then((d) => setSpecialties(Array.isArray(d) ? d : [])).catch(() => setSpecialties([]));
   }, [user, canManageClasses]);
 
   const roleLabel = isAdmin ? t("dash.role.admin")

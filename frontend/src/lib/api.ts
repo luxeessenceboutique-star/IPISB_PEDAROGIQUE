@@ -82,7 +82,24 @@ async function request(method: string, path: string, body?: unknown, opts?: { ca
       throw new ApiError(text || `HTTP ${res.status}`, res.status);
     }
     const ct = res.headers.get("content-type") ?? "";
-    const data = ct.includes("application/json") ? await res.json() : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let data: any = null;
+    if (ct.includes("application/json")) {
+      data = await res.json();
+    } else {
+      // Une réponse 200 non-JSON (typiquement l'index.html renvoyé par le
+      // rewrite SPA de Vercel quand VITE_API_URL est absent ou faux) était
+      // renvoyée comme `null`, puis les pages faisaient `null.length` →
+      // « Cannot read properties of null (reading 'length') ». On la traite
+      // désormais comme une erreur, que les appelants gèrent déjà via .catch().
+      const text = await res.text();
+      if (text.trim() !== "") {
+        throw new ApiError(
+          `Réponse inattendue de l'API (${BASE}${path}) — vérifiez VITE_API_URL et que le backend est en ligne.`,
+          res.status,
+        );
+      }
+    }
 
     if (method === "GET") {
       getCache.set(path, { data, ts: Date.now() });

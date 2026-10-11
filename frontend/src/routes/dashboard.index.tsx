@@ -170,7 +170,7 @@ function DashboardHome() {
     if (!user || !canCreate) return;
     setAnalyticsLoading(true);
     api.get("/api/dashboard/analytics")
-      .then((data: CourseAnalytic[]) => setAnalytics(data))
+      .then((data: CourseAnalytic[] | null) => setAnalytics(Array.isArray(data) ? data : []))
       .catch(() => setAnalytics([]))
       .finally(() => setAnalyticsLoading(false));
   }, [user, canCreate]);
@@ -370,13 +370,13 @@ function DashboardHome() {
                   <CountUp value={overview.total_students} duration={700} />
                 </div>
                 <div className="mt-3 flex flex-col gap-1.5">
-                  {overview.students_by_class.slice(0, 5).map(c => (
+                  {(overview.students_by_class ?? []).slice(0, 5).map(c => (
                     <div key={c.class_id} className="flex items-center justify-between text-xs" style={{ color: "var(--pal-muted)" }}>
                       <span>{c.class_name}</span>
                       <span style={{ fontWeight: 700, color: "var(--pal-ink)" }}>{c.count}</span>
                     </div>
                   ))}
-                  {overview.students_by_class.length === 0 && (
+                  {(overview.students_by_class?.length ?? 0) === 0 && (
                     <span className="text-xs" style={{ color: "var(--pal-muted)" }}>Aucune classe.</span>
                   )}
                 </div>
@@ -405,14 +405,14 @@ function DashboardHome() {
                   <span className="eyebrow">Activité récente</span>
                 </div>
                 <div className="mt-3 flex flex-col gap-1.5 max-h-[104px] overflow-y-auto">
-                  {overview.recent_activity.slice(0, 5).map(a => (
+                  {(overview.recent_activity ?? []).slice(0, 5).map(a => (
                     <div key={a.id} className="text-xs" style={{ color: "var(--pal-muted)" }}>
                       <span style={{ fontWeight: 700, color: "var(--pal-ink)" }}>{a.action}</span>
                       {" · "}
                       {new Date(a.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                     </div>
                   ))}
-                  {overview.recent_activity.length === 0 && (
+                  {(overview.recent_activity?.length ?? 0) === 0 && (
                     <span className="text-xs" style={{ color: "var(--pal-muted)" }}>Aucune activité récente.</span>
                   )}
                 </div>
@@ -468,7 +468,7 @@ function DashboardHome() {
                     {isOpen && (
                       <div className="px-5 pb-5 space-y-5 border-t border-border pt-4">
                         {/* Assignments table */}
-                        {course.assignments.length > 0 && (
+                        {(course.assignments?.length ?? 0) > 0 && (
                           <div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                               {lang === "fr" ? "Contrôle continu" : "Continuous assessment"}
@@ -510,7 +510,7 @@ function DashboardHome() {
                         )}
 
                         {/* Exams table */}
-                        {course.exams.length > 0 && (
+                        {(course.exams?.length ?? 0) > 0 && (
                           <div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                               {lang === "fr" ? "Examens" : "Exams"}
@@ -551,7 +551,7 @@ function DashboardHome() {
                           </div>
                         )}
 
-                        {course.assignments.length === 0 && course.exams.length === 0 && (
+                        {!course.assignments?.length && !course.exams?.length && (
                           <p className="text-sm text-muted-foreground">
                             {lang === "fr"
                               ? "Aucun contrôle continu ni examen pour ce cours."
