@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { toast } from "sonner";
 import {
   ArrowLeft, Download, Eye, FileText, FolderOpen, IdCard, Loader2,
@@ -35,7 +35,7 @@ const PAL = {
   danger:  "oklch(64% 0.18 25)",
 };
 const sans = '"Manrope", system-ui, sans-serif';
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+const API = API_BASE;
 
 const STATUT_LABEL: Record<string, string> = {
   actif: "Actif", suspendu: "Suspendu", diplome: "Diplômé", abandon: "Abandon",

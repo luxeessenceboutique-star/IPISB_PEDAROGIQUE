@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ type ResourceType = "file" | "link" | "video";
 type Resource = { id: string; type: ResourceType; title: string; url: string; mime_type?: string; size_bytes?: number };
 
 /* ─── API helpers (via backend to bypass storage RLS) ─────── */
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+const API = API_BASE;
 
 async function authHeader(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();

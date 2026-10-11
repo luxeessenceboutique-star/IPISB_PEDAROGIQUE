@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Stage, Layer, Rect, Ellipse, Line as KonvaLine, Text as KonvaText, Image as KonvaImage, Shape as KonvaShape, Transformer } from "react-konva";
 import Konva from "konva";
 import { supabase } from "@/integrations/supabase/client";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { toast } from "sonner";
 import {
   ArrowLeft, Plus, Trash2, Copy, Type, Image as ImageIcon, Bold, Italic,
@@ -151,7 +151,7 @@ function layoutRegeneratedText(items: AIRoleItem[]): TextEl[] {
   return out;
 }
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+const API = API_BASE;
 async function authHeader(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};

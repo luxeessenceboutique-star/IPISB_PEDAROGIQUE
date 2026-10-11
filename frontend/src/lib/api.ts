@@ -1,6 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+// Normalise VITE_API_URL : sans « https:// », fetch() traite l'URL comme un
+// chemin relatif au site (→ index.html de Vercel au lieu du backend).
+export function normalizeApiBase(raw: string | undefined): string {
+  let url = (raw ?? "").trim();
+  if (!url) return "http://localhost:9000";
+  if (!/^https?:\/\//i.test(url)) {
+    url = (/^(localhost|127\.0\.0\.1)(:|$)/.test(url) ? "http://" : "https://") + url;
+  }
+  return url.replace(/\/+$/, "");
+}
+
+export const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL);
+const BASE = API_BASE;
 
 async function getHeaders(): Promise<Record<string, string>> {
   const {

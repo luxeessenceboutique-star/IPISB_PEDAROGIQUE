@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate, useParams, Link } from "@tansta
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, API_BASE } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -209,7 +209,7 @@ function ExamEditorPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const form = new FormData();
       form.append("file", file);
-      const base = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+      const base = API_BASE;
       const res = await fetch(`${base}/api/exams/${examId}/questions/${qid}/image`, {
         method: "POST",
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},

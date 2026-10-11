@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { toast } from "sonner";
 import { Library, Upload, Trash2, Loader2, ExternalLink, FileText, FileImage, File as FileIcon } from "lucide-react";
 import { PageHead, EmptyHint } from "@/components/dashboard/ui";
@@ -34,7 +34,7 @@ const CATEGORIES = Object.keys(CATEGORY_LABEL);
 // list can be filtered by one. reglements/autres stay institution-wide.
 const SPECIALTY_SCOPED = new Set(["cdc", "programmes", "fiches_examens"]);
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+const API = API_BASE;
 
 async function authHeader(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();

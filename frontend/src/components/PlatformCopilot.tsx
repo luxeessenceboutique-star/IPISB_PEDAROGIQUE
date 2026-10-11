@@ -1,10 +1,11 @@
+import { API_BASE } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
 import { useBreakpoint } from "@/lib/useBreakpoint";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, X, Send, ChevronDown } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:9000";
+const API = API_BASE;
 const sans = '"Manrope", system-ui, sans-serif';
 
 type Lang = "fr" | "ar" | "en" | "darija";
