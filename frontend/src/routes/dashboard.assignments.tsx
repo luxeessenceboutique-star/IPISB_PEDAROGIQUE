@@ -1,8 +1,9 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { toast } from "sonner";
 import {
   FileText, Plus, Loader2, AlertCircle,
   Send, Trash2, Paperclip, ExternalLink, BarChart3, ClipboardList, Upload, Check,
-  Pencil, Copy, Save, X,
+  Pencil, Copy, Save, X, Sparkles,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/Skeletons";
 import { PageHead, EmptyHint } from "@/components/dashboard/ui";
@@ -62,6 +63,7 @@ function statusInfo(a: Assignment, lang: string) {
 function AssignmentsPage() {
   const { t, lang } = useI18n();
   const { user, roles } = useAuth();
+  const navigate = useNavigate();
   const isAdmin   = roles.includes("admin");
   const isProf    = roles.includes("professor");
   const canCreate = isAdmin || isProf;
@@ -70,6 +72,14 @@ function AssignmentsPage() {
   const [myCourses,          setMyCourses]          = useState<Course[]>([]);
   const [loading,            setLoading]            = useState(true);
   const { focusId, attachFocus } = useDeepLinkFocus();
+
+  // AI generate dialog (Contrôle continu multi-cours — distinct du devoir simple ci-dessous)
+  const [showAiGenerate, setShowAiGenerate] = useState(false);
+  const [aiCourseIds,    setAiCourseIds]    = useState<Set<string>>(new Set());
+  const [aiForm, setAiForm] = useState({
+    title: "", filiere: "", niveau: "", formateur: "", date_evaluation: "", duree_epreuve: "", total_points: "20", instructions: "",
+  });
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   // Create dialog
   const [showCreate,  setShowCreate]  = useState(false);
@@ -165,6 +175,43 @@ function AssignmentsPage() {
     setShowCreate(false);
     setCreateForm({ title: "", description: "", due_date: "", max_grade: "20", course_id: "" });
     load();
+  }
+
+  // ---------- AI generate (multi-cours) ----------
+  function toggleAiCourse(id: string) {
+    setAiCourseIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function generateWithAi() {
+    if (aiCourseIds.size === 0) { toast.error(lang === "fr" ? "Sélectionnez au moins un cours." : lang === "ar" ? "اختر درسًا واحدًا على الأقل." : "Select at least one course."); return; }
+    if (!aiForm.title.trim()) { toast.error(t("assignments.title_required")); return; }
+    setAiGenerating(true);
+    try {
+      const assessment = await api.post("/api/continuous-assessments/generate", {
+        title: aiForm.title.trim(),
+        course_ids: Array.from(aiCourseIds),
+        filiere: aiForm.filiere.trim() || null,
+        niveau: aiForm.niveau.trim() || null,
+        formateur: aiForm.formateur.trim() || null,
+        date_evaluation: aiForm.date_evaluation || null,
+        duree_epreuve: aiForm.duree_epreuve.trim() || null,
+        total_points: parseFloat(aiForm.total_points) || 20,
+        instructions: aiForm.instructions.trim() || null,
+      });
+      toast.success(lang === "fr" ? "Contrôle continu généré — relisez-le et éditez-le." : lang === "ar" ? "تم التوليد." : "Generated.");
+      setShowAiGenerate(false);
+      setAiCourseIds(new Set());
+      setAiForm({ title: "", filiere: "", niveau: "", formateur: "", date_evaluation: "", duree_epreuve: "", total_points: "20", instructions: "" });
+      navigate({ to: "/dashboard/continuous-assessments/$assessmentId/editor", params: { assessmentId: assessment.id } });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : (lang === "fr" ? "Échec de la génération." : "Generation failed."));
+    } finally {
+      setAiGenerating(false);
+    }
   }
 
   // ---------- Delete ----------
@@ -335,9 +382,15 @@ function AssignmentsPage() {
               : `${pending} pending · ${submitted} submitted · ${graded} graded`)
           : t("assignments.subtitle")}
         actions={canCreate ? (
-          <button type="button" onClick={() => setShowCreate(true)} className="btn-c btn-c-primary">
-            <Plus size={15} strokeWidth={1.7} />{t("assignments.create")}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setShowAiGenerate(true)} className="btn-c btn-c-soft">
+              <Sparkles size={15} strokeWidth={1.7} />
+              {lang === "fr" ? "Générer avec l'IA (multi-cours)" : lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI (multi-course)"}
+            </button>
+            <button type="button" onClick={() => setShowCreate(true)} className="btn-c btn-c-primary">
+              <Plus size={15} strokeWidth={1.7} />{t("assignments.create")}
+            </button>
+          </div>
         ) : undefined}
       />
 
@@ -472,6 +525,89 @@ function AssignmentsPage() {
             <Button variant="outline" onClick={() => setShowCreate(false)}>{t("common.cancel")}</Button>
             <Button className="border-0 bg-gradient-brand text-white" disabled={creating} onClick={createAssignment}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t("assignments.create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── AI generate Dialog (Contrôle continu multi-cours) ── */}
+      <Dialog open={showAiGenerate} onOpenChange={setShowAiGenerate}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-[var(--pal-primary)]" />
+              {lang === "fr" ? "Générer un contrôle continu avec l'IA" : lang === "ar" ? "توليد مراقبة مستمرة بالذكاء الاصطناعي" : "Generate a continuous assessment with AI"}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {lang === "fr"
+                ? "L'IA rédige les exercices (consigne + barème + corrigé) à partir du contenu publié des cours sélectionnés. Vous relirez et éditerez ensuite le résultat."
+                : "The AI drafts the exercises (prompt + points + answer key) from the published content of the selected courses. You'll review and edit the result next."}
+            </p>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">
+                {lang === "fr" ? "Cours" : "Courses"} * <span className="text-xs font-normal text-muted-foreground">({lang === "fr" ? "sélection multiple" : "multi-select"})</span>
+              </label>
+              {myCourses.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">{lang === "fr" ? "Aucun cours trouvé." : "No courses found."}</p>
+              ) : (
+                <div className="mt-1.5 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-border p-2">
+                  {myCourses.map(c => (
+                    <label key={c.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/50">
+                      <input type="checkbox" checked={aiCourseIds.has(c.id)} onChange={() => toggleAiCourse(c.id)} className="h-4 w-4 accent-[var(--pal-primary)]" />
+                      {c.title}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t("assignments.form.title")} *</label>
+              <Input className="mt-1.5" value={aiForm.title} onChange={e => setAiForm(f => ({ ...f, title: e.target.value }))}
+                placeholder={lang === "fr" ? "ex. Contrôle continu — Soins d'hygiène" : "ex. Continuous assessment — ..."} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">{lang === "fr" ? "Filière" : "Specialty"}</label>
+                <Input className="mt-1.5" value={aiForm.filiere} onChange={e => setAiForm(f => ({ ...f, filiere: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{lang === "fr" ? "Niveau" : "Level"}</label>
+                <Input className="mt-1.5" value={aiForm.niveau} onChange={e => setAiForm(f => ({ ...f, niveau: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">{lang === "fr" ? "Date de l'évaluation" : "Evaluation date"}</label>
+                <Input className="mt-1.5" type="date" value={aiForm.date_evaluation} onChange={e => setAiForm(f => ({ ...f, date_evaluation: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{lang === "fr" ? "Durée de l'épreuve" : "Duration"}</label>
+                <Input className="mt-1.5" value={aiForm.duree_epreuve} onChange={e => setAiForm(f => ({ ...f, duree_epreuve: e.target.value }))} placeholder="ex. 1h" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">{lang === "fr" ? "Formateur" : "Instructor"}</label>
+                <Input className="mt-1.5" value={aiForm.formateur} onChange={e => setAiForm(f => ({ ...f, formateur: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{lang === "fr" ? "Barème total" : "Total points"}</label>
+                <Input className="mt-1.5" type="number" min="1" step="0.5" value={aiForm.total_points} onChange={e => setAiForm(f => ({ ...f, total_points: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{lang === "fr" ? "Consignes pour l'IA" : "Instructions for the AI"} <span className="text-xs font-normal text-muted-foreground">({lang === "fr" ? "facultatif" : "optional"})</span></label>
+              <Textarea className="mt-1.5" rows={2} value={aiForm.instructions} onChange={e => setAiForm(f => ({ ...f, instructions: e.target.value }))}
+                placeholder={lang === "fr" ? "ex. privilégier les définitions et les études de cas…" : "ex. favor definitions and short case studies…"} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAiGenerate(false)}>{t("common.cancel")}</Button>
+            <Button className="border-0 bg-gradient-brand text-white" disabled={aiGenerating} onClick={generateWithAi}>
+              {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {aiGenerating ? (lang === "fr" ? "Génération…" : "Generating…") : (lang === "fr" ? "Générer" : "Generate")}
             </Button>
           </DialogFooter>
         </DialogContent>
