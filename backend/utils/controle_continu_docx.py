@@ -33,9 +33,13 @@ from utils import institution
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "pptx_export"
 LOGO_PATH = ASSETS_DIR / "ipisb_logo.png"
-SEAL_PATH = ASSETS_DIR / "accreditation_seal.png"
 INK = RGBColor(0x1A, 0x1A, 0x1A)
 DEFAULT_FONT = "Marin"  # police du gabarit d'origine — Word retombe sur une police de substitution si absente du poste, comme pour le gabarit lui-même
+# Le gabarit distingue clairement 2 polices à l'écran (vérifié par rendu
+# visuel réel — Word + export image) : sans-serif pour l'en-tête/titre/
+# métadonnées/en-têtes de tableau, serif pour le texte des questions/
+# réponses. BODY_FONT ne s'applique qu'au contenu des exercices.
+BODY_FONT = "Times New Roman"
 
 
 # ── HTML (Tiptap) → paragraphes docx ────────────────────────────────────────
@@ -111,7 +115,7 @@ def _add_html(container, html: str) -> None:
             run = p.add_run(text)
             run.bold = bold
             run.italic = italic
-            run.font.name = DEFAULT_FONT
+            run.font.name = BODY_FONT
             run.font.size = Pt(12)
             run.font.color.rgb = INK
 
@@ -147,22 +151,20 @@ def _set_margins(section) -> None:
 
 
 def _header_block(doc: DocxDocument) -> None:
-    # Cachet d'accréditation + logo côte à côte, centrés — reproduit le
-    # cluster d'images du gabarit (logo + sceau « Accrédité(s) »).
-    if SEAL_PATH.exists() or LOGO_PATH.exists():
+    # Logo seul, centré, au-dessus du nom de l'établissement — vérifié par
+    # rendu visuel réel : le gabarit n'affiche qu'un seul logo (les autres
+    # images qu'il référence dans sa XML ne sont en réalité pas visibles à
+    # l'écran, probablement un reliquat de copier-coller de l'auteur).
+    if LOGO_PATH.exists():
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_after = Pt(4)
-        if SEAL_PATH.exists():
-            p.add_run().add_picture(str(SEAL_PATH), height=Cm(1.8))
-            p.add_run("   ")
-        if LOGO_PATH.exists():
-            p.add_run().add_picture(str(LOGO_PATH), height=Cm(2.0))
+        p.add_run().add_picture(str(LOGO_PATH), height=Cm(2.0))
 
     name = doc.add_paragraph()
     name.alignment = WD_ALIGN_PARAGRAPH.CENTER
     name.paragraph_format.space_after = Pt(2)
-    run = name.add_run(f"{institution.SHORT_NAME} {institution.CITY.upper()}")
+    run = name.add_run("I.P.I.S.B EL JADIDA")
     run.bold = True
     run.font.name = DEFAULT_FONT
     run.font.size = Pt(10)
@@ -182,14 +184,28 @@ def _header_block(doc: DocxDocument) -> None:
 
 
 def _title_block(doc: DocxDocument, label: str) -> None:
+    """Encadré titre — bordure simple fine (vérifié par rendu visuel réel ;
+    contrairement au titre de l'Examen, celui-ci n'est pas en double trait)."""
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(6)
     p.paragraph_format.space_after = Pt(14)
     run = p.add_run(f"Contrôle continu ({label})")
     run.bold = True
     run.font.name = DEFAULT_FONT
     run.font.size = Pt(16)
     run.font.color.rgb = INK
+
+    pPr = p._p.get_or_add_pPr()
+    borders = OxmlElement("w:pBdr")
+    for edge in ("top", "left", "bottom", "right"):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
+        el.set(qn("w:space"), "8")
+        el.set(qn("w:color"), "1A1A1A")
+        borders.append(el)
+    pPr.append(borders)
 
 
 def _meta_line(doc: DocxDocument, *pairs: tuple[str, str]) -> None:
@@ -247,19 +263,32 @@ def _exercise_table(doc: DocxDocument, assessment: dict, *, header_left: str, sh
     body_left_first = True
     body_right_first = True
 
-    def left_html(html: str) -> list:
+    def left_html(html: str, *, number: int | None = None) -> list:
+        """number : préfixe « N. » tapé à la main sur le 1er bloc, avec
+        retrait en drapeau — PAS le style natif « List Number » : Word
+        numérote en continu sur tout le document (une seule liste par style),
+        donc la page Corrigé type reprendrait à 5. 6. 7… au lieu de
+        redémarrer à 1. (constaté par rendu visuel réel)."""
         nonlocal body_left_first
         blocks = _html_to_blocks(html)
-        for block in blocks:
+        for i, block in enumerate(blocks):
             p = body_left.paragraphs[0] if body_left_first else body_left.add_paragraph()
             body_left_first = False
             if block.kind == "li":
                 p.style = "List Bullet"
+            elif i == 0 and number is not None:
+                p.paragraph_format.left_indent = Cm(0.63)
+                p.paragraph_format.first_line_indent = Cm(-0.63)
+                p.paragraph_format.space_after = Pt(6)
+                prefix = p.add_run(f"{number}.\t")
+                prefix.font.name = BODY_FONT
+                prefix.font.size = Pt(12)
+                prefix.font.color.rgb = INK
             for text, bold, italic in block.runs:
                 run = p.add_run(text)
                 run.bold = bold
                 run.italic = italic
-                run.font.name = DEFAULT_FONT
+                run.font.name = BODY_FONT
                 run.font.size = Pt(12)
                 run.font.color.rgb = INK
         return blocks
@@ -281,24 +310,32 @@ def _exercise_table(doc: DocxDocument, assessment: dict, *, header_left: str, sh
         p = body_right.paragraphs[0] if body_right_first else body_right.add_paragraph()
         body_right_first = False
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        bareme_label = f"{bareme:g}pts" if float(bareme) == int(bareme) else f"{bareme}pts"
+        # Format mesuré sur le gabarit : zéro de tête, ex. « (06pts) ».
+        bareme_label = f"{int(bareme):02d}pts" if float(bareme) == int(bareme) else f"{bareme}pts"
         run = p.add_run(f"({bareme_label})")
         run.bold = True
         run.font.name = DEFAULT_FONT
-        run.font.size = Pt(12)
+        run.font.size = Pt(14)
         run.font.color.rgb = INK
 
+    # Espace vierge en haut du tableau avant la première question — présent
+    # UNIQUEMENT sur la page Questions dans le gabarit (vérifié par rendu
+    # visuel réel) ; la page Corrigé type démarre directement sur « 1. ».
+    if not show_corrige:
+        left_blank(4)
+        right_blank(4)
+
     sections = assessment.get("sections") or []
-    for section in sections:
+    for num, section in enumerate(sections, start=1):
         bareme = section.get("bareme") or 0
         answer_lines = 0
         if show_corrige:
             html = section.get("corrige") or ""
-            blocks = left_html(html)
+            blocks = left_html(html, number=num)
             gap = max(1, len(blocks))
         else:
             html = section.get("consigne") or ""
-            blocks = left_html(html)
+            blocks = left_html(html, number=num)
             gap = max(1, len(blocks))
             # Espace de réponse pour l'étudiant, proportionnel au barème —
             # mêmes proportions que le gabarit (plusieurs lignes blanches).
