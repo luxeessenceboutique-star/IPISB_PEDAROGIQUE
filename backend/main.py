@@ -30,11 +30,18 @@ REMINDER_SCAN_INITIAL_DELAY_SECONDS = 30    # laisse l'app démarrer avant le 1e
 async def _reminder_loop() -> None:
     """Boucle en tâche de fond : relance périodiquement les échéances
     RH/Comptabilité/Tâches (utils/reminders.py). Pas de dépendance externe
-    (pas d'APScheduler) — une simple boucle asyncio dans le process."""
+    (pas d'APScheduler) — une simple boucle asyncio dans le process.
+
+    scan_and_notify est 100% synchrone (supabase-py bloquant) — exécutée via
+    asyncio.to_thread() pour ne pas geler toute la boucle asyncio (donc
+    toutes les requêtes HTTP en cours) pendant son passage. Avant ce
+    correctif, chaque relance du serveur gelait l'API entière pendant
+    quelques secondes à REMINDER_SCAN_INITIAL_DELAY_SECONDS après le
+    démarrage, et à nouveau toutes les REMINDER_SCAN_INTERVAL_SECONDS."""
     await asyncio.sleep(REMINDER_SCAN_INITIAL_DELAY_SECONDS)
     while True:
         try:
-            result = await scan_and_notify(get_db())
+            result = await asyncio.to_thread(scan_and_notify, get_db())
             log.info("Agenda de gestion — passage automatique : %s", result)
         except Exception:
             log.exception("Agenda de gestion — échec du passage automatique")

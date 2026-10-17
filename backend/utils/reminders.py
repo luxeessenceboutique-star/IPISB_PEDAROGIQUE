@@ -163,9 +163,17 @@ def compute_agenda_items(db: Client) -> list[dict]:
     return items
 
 
-async def scan_and_notify(db: Client) -> dict:
+def scan_and_notify(db: Client) -> dict:
     """Calcule les échéances et relance chaque responsable — avec
-    anti-doublon (pas de répétition d'un même rappel dans les ~20h)."""
+    anti-doublon (pas de répétition d'un même rappel dans les ~20h).
+
+    Volontairement synchrone : tout l'intérieur (compute_agenda_items, les
+    requêtes notifications/notify_users) utilise le client supabase-py
+    bloquant, sans un seul `await` réel — déclarer cette fonction `async def`
+    sans l'exécuter sur un thread à part bloquait donc l'intégralité de la
+    boucle asyncio (et donc TOUTES les requêtes HTTP en cours) pendant toute
+    la durée du scan. Voir main.py::_reminder_loop qui l'appelle maintenant
+    via asyncio.to_thread()."""
     items = compute_agenda_items(db)
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=20)).isoformat()
     sent = 0
