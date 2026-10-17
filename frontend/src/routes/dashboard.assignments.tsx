@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   FileText, Plus, Loader2, AlertCircle,
   Send, Trash2, Paperclip, ExternalLink, BarChart3, ClipboardList, Upload, Check,
+  Pencil, Copy, Save, X,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/Skeletons";
 import { PageHead, EmptyHint } from "@/components/dashboard/ui";
@@ -94,6 +95,12 @@ function AssignmentsPage() {
   const [grading,            setGrading]            = useState<string | null>(null);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
+  // Detail / edit dialog (professor/admin) — opened by clicking a row
+  const [detail,     setDetail]     = useState<Assignment | null>(null);
+  const [editForm,   setEditForm]   = useState({ title: "", description: "", due_date: "", max_grade: "20", course_id: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
   async function load() {
     if (!user) return;
     setLoading(true);
@@ -168,6 +175,67 @@ function AssignmentsPage() {
     if (error) { toast.error(error.message); return; }
     toast.success(t("assignments.deleted"));
     setAssignments(prev => prev.filter(a => a.id !== id));
+  }
+
+  // ---------- Detail / edit ----------
+  function toDatetimeLocal(iso: string | null): string {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function openDetail(a: Assignment) {
+    setEditForm({
+      title: a.title,
+      description: a.description ?? "",
+      due_date: toDatetimeLocal(a.due_date),
+      max_grade: String(a.max_grade),
+      course_id: a.course_id,
+    });
+    setDetail(a);
+  }
+
+  async function saveDetail() {
+    if (!detail) return;
+    if (!editForm.title.trim()) { toast.error(t("assignments.title_required")); return; }
+    setSavingEdit(true);
+    const { error } = await supabase.from("assignments").update({
+      title: editForm.title.trim(),
+      description: editForm.description || null,
+      due_date: editForm.due_date || null,
+      max_grade: parseFloat(editForm.max_grade) || 20,
+      course_id: editForm.course_id,
+    }).eq("id", detail.id);
+    setSavingEdit(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(lang === "fr" ? "Modifications enregistrées." : lang === "ar" ? "تم الحفظ." : "Changes saved.");
+    setDetail(null);
+    load();
+  }
+
+  async function duplicateAssignment(a: Assignment) {
+    setDuplicating(true);
+    const { error } = await supabase.from("assignments").insert({
+      title: `${a.title} (copie)`,
+      description: a.description,
+      due_date: null,
+      max_grade: a.max_grade,
+      course_id: a.course_id,
+    });
+    setDuplicating(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(lang === "fr" ? "Dupliqué — nouvelle échéance à définir." : lang === "ar" ? "تم النسخ." : "Duplicated.");
+    setDetail(null);
+    load();
+  }
+
+  async function deleteFromDetail() {
+    if (!detail) return;
+    if (!window.confirm(t("assignments.delete_confirm"))) return;
+    await deleteAssignment(detail.id);
+    setDetail(null);
   }
 
   // ---------- Submit ----------
@@ -300,7 +368,14 @@ function AssignmentsPage() {
                 <span className="flex shrink-0" style={{ color: iconColor }}>
                   <Icon size={20} strokeWidth={1.7} />
                 </span>
-                <div className="min-w-0 flex-1" style={{ minWidth: 180 }}>
+                <div
+                  className="min-w-0 flex-1"
+                  style={{ minWidth: 180, cursor: canCreate ? "pointer" : undefined }}
+                  onClick={canCreate ? () => openDetail(a) : undefined}
+                  role={canCreate ? "button" : undefined}
+                  tabIndex={canCreate ? 0 : undefined}
+                  title={canCreate ? (lang === "fr" ? "Voir le détail" : lang === "ar" ? "عرض التفاصيل" : "View details") : undefined}
+                >
                   <div style={{ fontWeight: 700, fontSize: 14, color: "var(--pal-ink)" }}>{a.title}</div>
                   <div className="mt-0.5" style={{ fontSize: 12, color: "var(--pal-muted)" }}>
                     {a.course_title} · {t("assignments.due")}: {fmt(a.due_date)} · /{a.max_grade} {t("assignments.points")}
@@ -330,6 +405,15 @@ function AssignmentsPage() {
                   <>
                     <button type="button" className="btn-c btn-c-ghost btn-c-sm" onClick={() => openGradeDialog(a)}>
                       <BarChart3 size={13} strokeWidth={1.7} />{t("assignments.view_submissions")}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground"
+                      aria-label={lang === "fr" ? "Modifier" : lang === "ar" ? "تعديل" : "Edit"}
+                      title={lang === "fr" ? "Modifier" : lang === "ar" ? "تعديل" : "Edit"}
+                      onClick={() => openDetail(a)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       type="button"
@@ -388,6 +472,73 @@ function AssignmentsPage() {
             <Button variant="outline" onClick={() => setShowCreate(false)}>{t("common.cancel")}</Button>
             <Button className="border-0 bg-gradient-brand text-white" disabled={creating} onClick={createAssignment}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t("assignments.create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Detail / Edit Dialog (professor/admin) ── */}
+      <Dialog open={!!detail} onOpenChange={o => !o && setDetail(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+              {lang === "fr" ? "Détail du travail" : lang === "ar" ? "تفاصيل العمل" : "Assignment details"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">{t("assignments.form.course")} *</label>
+              <Select value={editForm.course_id} onValueChange={v => setEditForm(f => ({ ...f, course_id: v }))}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>{myCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t("assignments.form.title")} *</label>
+              <Input className="mt-1.5" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t("assignments.form.description")}</label>
+              <Textarea className="mt-1.5" rows={3} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">{t("assignments.form.due_date")}</label>
+                <Input className="mt-1.5" type="datetime-local" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{t("assignments.form.max_grade")}</label>
+                <Input className="mt-1.5" type="number" min="1" value={editForm.max_grade} onChange={e => setEditForm(f => ({ ...f, max_grade: e.target.value }))} />
+              </div>
+            </div>
+
+            {detail && (
+              <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                {lang === "fr" ? "Créé le" : lang === "ar" ? "أُنشئ في" : "Created"} {fmt(detail.created_at)}
+                {!!detail.submission && (lang === "fr" ? " · une soumission existe" : lang === "ar" ? " · توجد تسليمة" : " · a submission exists")}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+              <Button type="button" variant="outline" size="sm" className="h-8 text-xs" disabled={duplicating} onClick={() => detail && duplicateAssignment(detail)}>
+                {duplicating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                {lang === "fr" ? "Dupliquer" : lang === "ar" ? "نسخ" : "Duplicate"}
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-8 text-xs"
+                onClick={() => { if (detail) { setDetail(null); openGradeDialog(detail); } }}>
+                <BarChart3 className="h-3.5 w-3.5" />{t("assignments.view_submissions")}
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="ml-auto h-8 text-xs text-destructive hover:text-destructive" onClick={deleteFromDetail}>
+                <Trash2 className="h-3.5 w-3.5" />{lang === "fr" ? "Supprimer" : lang === "ar" ? "حذف" : "Delete"}
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetail(null)}><X className="h-3.5 w-3.5" />{t("common.cancel")}</Button>
+            <Button className="border-0 bg-gradient-brand text-white" disabled={savingEdit} onClick={saveDetail}>
+              {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {lang === "fr" ? "Enregistrer" : lang === "ar" ? "حفظ" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
