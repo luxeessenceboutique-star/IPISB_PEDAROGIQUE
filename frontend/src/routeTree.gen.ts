@@ -27,6 +27,7 @@ import { Route as DashboardKpisProductionRouteImport } from './routes/dashboard.
 import { Route as DashboardGradesRouteImport } from './routes/dashboard.grades'
 import { Route as DashboardExamsRouteImport } from './routes/dashboard.exams'
 import { Route as DashboardCoursesRouteImport } from './routes/dashboard.courses'
+import { Route as DashboardContinuousAssessmentsRouteImport } from './routes/dashboard.continuous-assessments'
 import { Route as DashboardClassesRouteImport } from './routes/dashboard.classes'
 import { Route as DashboardAssignmentsRouteImport } from './routes/dashboard.assignments'
 import { Route as DashboardAgendaFormationRouteImport } from './routes/dashboard.agenda-formation'
@@ -35,7 +36,9 @@ import { Route as DashboardStudentsStudentIdRouteImport } from './routes/dashboa
 import { Route as DashboardSessionFeedbackSessionIdRouteImport } from './routes/dashboard.session-feedback.$sessionId'
 import { Route as DashboardExamsNewRouteImport } from './routes/dashboard.exams_.new'
 import { Route as DashboardCoursesCourseIdRouteImport } from './routes/dashboard.courses_.$courseId'
+import { Route as DashboardContinuousAssessmentsNewRouteImport } from './routes/dashboard.continuous-assessments_.new'
 import { Route as DashboardExamsExamIdEditorRouteImport } from './routes/dashboard.exams_.$examId_.editor'
+import { Route as DashboardContinuousAssessmentsAssessmentIdEditorRouteImport } from './routes/dashboard.continuous-assessments_.$assessmentId_.editor'
 import { Route as DashboardCoursesCourseIdEditorModuleIdRouteImport } from './routes/dashboard.courses_.$courseId_.editor.$moduleId'
 
 const DashboardRoute = DashboardRouteImport.update({
@@ -129,6 +132,12 @@ const DashboardCoursesRoute = DashboardCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardContinuousAssessmentsRoute =
+  DashboardContinuousAssessmentsRouteImport.update({
+    id: '/continuous-assessments',
+    path: '/continuous-assessments',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardClassesRoute = DashboardClassesRouteImport.update({
   id: '/classes',
   path: '/classes',
@@ -173,10 +182,22 @@ const DashboardCoursesCourseIdRoute =
     path: '/courses/$courseId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardContinuousAssessmentsNewRoute =
+  DashboardContinuousAssessmentsNewRouteImport.update({
+    id: '/continuous-assessments_/new',
+    path: '/continuous-assessments/new',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardExamsExamIdEditorRoute =
   DashboardExamsExamIdEditorRouteImport.update({
     id: '/exams_/$examId_/editor',
     path: '/exams/$examId/editor',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardContinuousAssessmentsAssessmentIdEditorRoute =
+  DashboardContinuousAssessmentsAssessmentIdEditorRouteImport.update({
+    id: '/continuous-assessments_/$assessmentId_/editor',
+    path: '/continuous-assessments/$assessmentId/editor',
     getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardCoursesCourseIdEditorModuleIdRoute =
@@ -194,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/agenda-formation': typeof DashboardAgendaFormationRoute
   '/dashboard/assignments': typeof DashboardAssignmentsRoute
   '/dashboard/classes': typeof DashboardClassesRoute
+  '/dashboard/continuous-assessments': typeof DashboardContinuousAssessmentsRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/exams': typeof DashboardExamsRoute
   '/dashboard/grades': typeof DashboardGradesRoute
@@ -209,10 +231,12 @@ export interface FileRoutesByFullPath {
   '/dashboard/teaching-sessions': typeof DashboardTeachingSessionsRoute
   '/dashboard/timetables': typeof DashboardTimetablesRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/continuous-assessments/new': typeof DashboardContinuousAssessmentsNewRoute
   '/dashboard/courses/$courseId': typeof DashboardCoursesCourseIdRoute
   '/dashboard/exams/new': typeof DashboardExamsNewRoute
   '/dashboard/session-feedback/$sessionId': typeof DashboardSessionFeedbackSessionIdRoute
   '/dashboard/students/$studentId': typeof DashboardStudentsStudentIdRoute
+  '/dashboard/continuous-assessments/$assessmentId/editor': typeof DashboardContinuousAssessmentsAssessmentIdEditorRoute
   '/dashboard/exams/$examId/editor': typeof DashboardExamsExamIdEditorRoute
   '/dashboard/courses/$courseId/editor/$moduleId': typeof DashboardCoursesCourseIdEditorModuleIdRoute
 }
@@ -223,6 +247,7 @@ export interface FileRoutesByTo {
   '/dashboard/agenda-formation': typeof DashboardAgendaFormationRoute
   '/dashboard/assignments': typeof DashboardAssignmentsRoute
   '/dashboard/classes': typeof DashboardClassesRoute
+  '/dashboard/continuous-assessments': typeof DashboardContinuousAssessmentsRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/exams': typeof DashboardExamsRoute
   '/dashboard/grades': typeof DashboardGradesRoute
@@ -238,10 +263,12 @@ export interface FileRoutesByTo {
   '/dashboard/teaching-sessions': typeof DashboardTeachingSessionsRoute
   '/dashboard/timetables': typeof DashboardTimetablesRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/continuous-assessments/new': typeof DashboardContinuousAssessmentsNewRoute
   '/dashboard/courses/$courseId': typeof DashboardCoursesCourseIdRoute
   '/dashboard/exams/new': typeof DashboardExamsNewRoute
   '/dashboard/session-feedback/$sessionId': typeof DashboardSessionFeedbackSessionIdRoute
   '/dashboard/students/$studentId': typeof DashboardStudentsStudentIdRoute
+  '/dashboard/continuous-assessments/$assessmentId/editor': typeof DashboardContinuousAssessmentsAssessmentIdEditorRoute
   '/dashboard/exams/$examId/editor': typeof DashboardExamsExamIdEditorRoute
   '/dashboard/courses/$courseId/editor/$moduleId': typeof DashboardCoursesCourseIdEditorModuleIdRoute
 }
@@ -254,6 +281,7 @@ export interface FileRoutesById {
   '/dashboard/agenda-formation': typeof DashboardAgendaFormationRoute
   '/dashboard/assignments': typeof DashboardAssignmentsRoute
   '/dashboard/classes': typeof DashboardClassesRoute
+  '/dashboard/continuous-assessments': typeof DashboardContinuousAssessmentsRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/exams': typeof DashboardExamsRoute
   '/dashboard/grades': typeof DashboardGradesRoute
@@ -269,10 +297,12 @@ export interface FileRoutesById {
   '/dashboard/teaching-sessions': typeof DashboardTeachingSessionsRoute
   '/dashboard/timetables': typeof DashboardTimetablesRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/continuous-assessments_/new': typeof DashboardContinuousAssessmentsNewRoute
   '/dashboard/courses_/$courseId': typeof DashboardCoursesCourseIdRoute
   '/dashboard/exams_/new': typeof DashboardExamsNewRoute
   '/dashboard/session-feedback/$sessionId': typeof DashboardSessionFeedbackSessionIdRoute
   '/dashboard/students_/$studentId': typeof DashboardStudentsStudentIdRoute
+  '/dashboard/continuous-assessments_/$assessmentId_/editor': typeof DashboardContinuousAssessmentsAssessmentIdEditorRoute
   '/dashboard/exams_/$examId_/editor': typeof DashboardExamsExamIdEditorRoute
   '/dashboard/courses_/$courseId_/editor/$moduleId': typeof DashboardCoursesCourseIdEditorModuleIdRoute
 }
@@ -286,6 +316,7 @@ export interface FileRouteTypes {
     | '/dashboard/agenda-formation'
     | '/dashboard/assignments'
     | '/dashboard/classes'
+    | '/dashboard/continuous-assessments'
     | '/dashboard/courses'
     | '/dashboard/exams'
     | '/dashboard/grades'
@@ -301,10 +332,12 @@ export interface FileRouteTypes {
     | '/dashboard/teaching-sessions'
     | '/dashboard/timetables'
     | '/dashboard/'
+    | '/dashboard/continuous-assessments/new'
     | '/dashboard/courses/$courseId'
     | '/dashboard/exams/new'
     | '/dashboard/session-feedback/$sessionId'
     | '/dashboard/students/$studentId'
+    | '/dashboard/continuous-assessments/$assessmentId/editor'
     | '/dashboard/exams/$examId/editor'
     | '/dashboard/courses/$courseId/editor/$moduleId'
   fileRoutesByTo: FileRoutesByTo
@@ -315,6 +348,7 @@ export interface FileRouteTypes {
     | '/dashboard/agenda-formation'
     | '/dashboard/assignments'
     | '/dashboard/classes'
+    | '/dashboard/continuous-assessments'
     | '/dashboard/courses'
     | '/dashboard/exams'
     | '/dashboard/grades'
@@ -330,10 +364,12 @@ export interface FileRouteTypes {
     | '/dashboard/teaching-sessions'
     | '/dashboard/timetables'
     | '/dashboard'
+    | '/dashboard/continuous-assessments/new'
     | '/dashboard/courses/$courseId'
     | '/dashboard/exams/new'
     | '/dashboard/session-feedback/$sessionId'
     | '/dashboard/students/$studentId'
+    | '/dashboard/continuous-assessments/$assessmentId/editor'
     | '/dashboard/exams/$examId/editor'
     | '/dashboard/courses/$courseId/editor/$moduleId'
   id:
@@ -345,6 +381,7 @@ export interface FileRouteTypes {
     | '/dashboard/agenda-formation'
     | '/dashboard/assignments'
     | '/dashboard/classes'
+    | '/dashboard/continuous-assessments'
     | '/dashboard/courses'
     | '/dashboard/exams'
     | '/dashboard/grades'
@@ -360,10 +397,12 @@ export interface FileRouteTypes {
     | '/dashboard/teaching-sessions'
     | '/dashboard/timetables'
     | '/dashboard/'
+    | '/dashboard/continuous-assessments_/new'
     | '/dashboard/courses_/$courseId'
     | '/dashboard/exams_/new'
     | '/dashboard/session-feedback/$sessionId'
     | '/dashboard/students_/$studentId'
+    | '/dashboard/continuous-assessments_/$assessmentId_/editor'
     | '/dashboard/exams_/$examId_/editor'
     | '/dashboard/courses_/$courseId_/editor/$moduleId'
   fileRoutesById: FileRoutesById
@@ -502,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCoursesRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/continuous-assessments': {
+      id: '/dashboard/continuous-assessments'
+      path: '/continuous-assessments'
+      fullPath: '/dashboard/continuous-assessments'
+      preLoaderRoute: typeof DashboardContinuousAssessmentsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/classes': {
       id: '/dashboard/classes'
       path: '/classes'
@@ -558,11 +604,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCoursesCourseIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/continuous-assessments_/new': {
+      id: '/dashboard/continuous-assessments_/new'
+      path: '/continuous-assessments/new'
+      fullPath: '/dashboard/continuous-assessments/new'
+      preLoaderRoute: typeof DashboardContinuousAssessmentsNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/exams_/$examId_/editor': {
       id: '/dashboard/exams_/$examId_/editor'
       path: '/exams/$examId/editor'
       fullPath: '/dashboard/exams/$examId/editor'
       preLoaderRoute: typeof DashboardExamsExamIdEditorRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/continuous-assessments_/$assessmentId_/editor': {
+      id: '/dashboard/continuous-assessments_/$assessmentId_/editor'
+      path: '/continuous-assessments/$assessmentId/editor'
+      fullPath: '/dashboard/continuous-assessments/$assessmentId/editor'
+      preLoaderRoute: typeof DashboardContinuousAssessmentsAssessmentIdEditorRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/courses_/$courseId_/editor/$moduleId': {
@@ -580,6 +640,7 @@ interface DashboardRouteChildren {
   DashboardAgendaFormationRoute: typeof DashboardAgendaFormationRoute
   DashboardAssignmentsRoute: typeof DashboardAssignmentsRoute
   DashboardClassesRoute: typeof DashboardClassesRoute
+  DashboardContinuousAssessmentsRoute: typeof DashboardContinuousAssessmentsRoute
   DashboardCoursesRoute: typeof DashboardCoursesRoute
   DashboardExamsRoute: typeof DashboardExamsRoute
   DashboardGradesRoute: typeof DashboardGradesRoute
@@ -595,10 +656,12 @@ interface DashboardRouteChildren {
   DashboardTeachingSessionsRoute: typeof DashboardTeachingSessionsRoute
   DashboardTimetablesRoute: typeof DashboardTimetablesRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardContinuousAssessmentsNewRoute: typeof DashboardContinuousAssessmentsNewRoute
   DashboardCoursesCourseIdRoute: typeof DashboardCoursesCourseIdRoute
   DashboardExamsNewRoute: typeof DashboardExamsNewRoute
   DashboardSessionFeedbackSessionIdRoute: typeof DashboardSessionFeedbackSessionIdRoute
   DashboardStudentsStudentIdRoute: typeof DashboardStudentsStudentIdRoute
+  DashboardContinuousAssessmentsAssessmentIdEditorRoute: typeof DashboardContinuousAssessmentsAssessmentIdEditorRoute
   DashboardExamsExamIdEditorRoute: typeof DashboardExamsExamIdEditorRoute
   DashboardCoursesCourseIdEditorModuleIdRoute: typeof DashboardCoursesCourseIdEditorModuleIdRoute
 }
@@ -608,6 +671,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgendaFormationRoute: DashboardAgendaFormationRoute,
   DashboardAssignmentsRoute: DashboardAssignmentsRoute,
   DashboardClassesRoute: DashboardClassesRoute,
+  DashboardContinuousAssessmentsRoute: DashboardContinuousAssessmentsRoute,
   DashboardCoursesRoute: DashboardCoursesRoute,
   DashboardExamsRoute: DashboardExamsRoute,
   DashboardGradesRoute: DashboardGradesRoute,
@@ -623,11 +687,15 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTeachingSessionsRoute: DashboardTeachingSessionsRoute,
   DashboardTimetablesRoute: DashboardTimetablesRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardContinuousAssessmentsNewRoute:
+    DashboardContinuousAssessmentsNewRoute,
   DashboardCoursesCourseIdRoute: DashboardCoursesCourseIdRoute,
   DashboardExamsNewRoute: DashboardExamsNewRoute,
   DashboardSessionFeedbackSessionIdRoute:
     DashboardSessionFeedbackSessionIdRoute,
   DashboardStudentsStudentIdRoute: DashboardStudentsStudentIdRoute,
+  DashboardContinuousAssessmentsAssessmentIdEditorRoute:
+    DashboardContinuousAssessmentsAssessmentIdEditorRoute,
   DashboardExamsExamIdEditorRoute: DashboardExamsExamIdEditorRoute,
   DashboardCoursesCourseIdEditorModuleIdRoute:
     DashboardCoursesCourseIdEditorModuleIdRoute,

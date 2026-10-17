@@ -51,6 +51,50 @@ class QuickGradesUpsert(BaseModel):
     grades: dict[str, Optional[float]]
 
 
+# ── Contrôle continu (évaluation multi-cours, génération IA + docx) ─────────
+class AssessmentSection(BaseModel):
+    """Une « exercice » du contrôle continu : consigne + barème + corrigé
+    type. consigne/corrige sont du HTML riche (Tiptap) — pas du texte brut —
+    stocké tel quel et converti en paragraphes docx à l'export."""
+    id: str
+    consigne: str = ""
+    bareme: float = 0
+    corrige: str = ""
+
+
+class ContinuousAssessmentGenerate(BaseModel):
+    title: str
+    course_ids: list[str]
+    filiere: Optional[str] = None
+    niveau: Optional[str] = None
+    formateur: Optional[str] = None
+    date_evaluation: Optional[str] = None
+    duree_epreuve: Optional[str] = None
+    total_points: float = 20
+    instructions: Optional[str] = None  # consigne libre du formateur pour orienter la génération
+
+
+class ContinuousAssessmentUpdate(BaseModel):
+    title: Optional[str] = None
+    course_ids: Optional[list[str]] = None
+    filiere: Optional[str] = None
+    niveau: Optional[str] = None
+    formateur: Optional[str] = None
+    date_evaluation: Optional[str] = None
+    duree_epreuve: Optional[str] = None
+    total_points: Optional[float] = None
+    sections: Optional[list[AssessmentSection]] = None
+    status: Optional[str] = None  # 'draft' | 'published'
+
+
+class AiEditRequest(BaseModel):
+    """Réécriture IA d'un seul bloc de texte (consigne ou corrigé), selon une
+    instruction libre du formateur — même principe que
+    utils/course_generation.py::edit_text_with_ai pour les diapositives."""
+    html: str
+    instruction: str
+
+
 class QuestionCreate(BaseModel):
     question: str
     options: list[str]

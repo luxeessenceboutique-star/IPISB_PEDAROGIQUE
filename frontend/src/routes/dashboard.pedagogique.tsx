@@ -63,6 +63,7 @@ function PedagogiquePage() {
     { key: "courses", label: "Cours", sub: "Contenu pédagogique, modules et leçons.", to: "/dashboard/courses", icon: BookOpen, show: !isRestrictedStaff },
     { key: "assignments", label: "Contrôle continu", sub: "Devoirs, rendus et notation.", to: "/dashboard/assignments", icon: ClipboardList, show: !isRestrictedStaff },
     { key: "exams", label: "Examens", sub: "Épreuves, questions et résultats.", to: "/dashboard/exams", icon: GraduationCap, show: !isRestrictedStaff },
+    { key: "continuous-assessments", label: "Épreuves écrites", sub: "Contrôle continu généré par IA à partir de plusieurs cours, export Word.", to: "/dashboard/continuous-assessments", icon: FileText, show: !isRestrictedStaff },
     { key: "grades", label: "Notes", sub: "Relevé de notes consolidé, moyennes par matière et générale.", to: "/dashboard/grades", icon: Award, show: isAdmin || isProf },
     { key: "classes", label: "Classes", sub: "Filières, promotions et effectifs.", to: "/dashboard/classes", icon: Layers, show: canManageClasses },
     { key: "students", label: "Élèves", sub: "Fiches stagiaires et dossiers.", to: "/dashboard/students", icon: IdCard, show: isAdmin || isProf },

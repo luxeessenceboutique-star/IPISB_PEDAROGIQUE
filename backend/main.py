@@ -19,6 +19,7 @@ from routers import teaching_sessions, session_feedback
 from routers import auth as auth_router
 from routers import roster
 from routers import rooms
+from routers import continuous_assessments
 
 log = logging.getLogger(__name__)
 
@@ -110,6 +111,7 @@ app.include_router(session_feedback.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(roster.router, prefix="/api")
 app.include_router(rooms.router, prefix="/api")
+app.include_router(continuous_assessments.router, prefix="/api")
 
 
 @app.get("/health")
