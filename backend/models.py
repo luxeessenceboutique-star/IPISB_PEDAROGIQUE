@@ -62,9 +62,17 @@ class AssessmentSection(BaseModel):
     corrige: str = ""
 
 
+class JuryMember(BaseModel):
+    """Un membre du jury d'examen (doc_type='examen' uniquement) — composition
+    variable d'un examen à l'autre, saisie à la main à chaque génération."""
+    name: str = ""
+    role: str = ""
+
+
 class ContinuousAssessmentGenerate(BaseModel):
     title: str
     course_ids: list[str]
+    doc_type: str = "controle_continu"  # 'controle_continu' | 'examen'
     filiere: Optional[str] = None
     niveau: Optional[str] = None
     formateur: Optional[str] = None
@@ -72,11 +80,15 @@ class ContinuousAssessmentGenerate(BaseModel):
     duree_epreuve: Optional[str] = None
     total_points: float = 20
     instructions: Optional[str] = None  # consigne libre du formateur pour orienter la génération
+    # doc_type='examen' uniquement — non généré par l'IA, saisi à la main :
+    jury: Optional[list[JuryMember]] = None
+    pratique_sections: Optional[list[AssessmentSection]] = None
 
 
 class ContinuousAssessmentUpdate(BaseModel):
     title: Optional[str] = None
     course_ids: Optional[list[str]] = None
+    doc_type: Optional[str] = None
     filiere: Optional[str] = None
     niveau: Optional[str] = None
     formateur: Optional[str] = None
@@ -84,6 +96,8 @@ class ContinuousAssessmentUpdate(BaseModel):
     duree_epreuve: Optional[str] = None
     total_points: Optional[float] = None
     sections: Optional[list[AssessmentSection]] = None
+    jury: Optional[list[JuryMember]] = None
+    pratique_sections: Optional[list[AssessmentSection]] = None
     status: Optional[str] = None  # 'draft' | 'published'
 
 

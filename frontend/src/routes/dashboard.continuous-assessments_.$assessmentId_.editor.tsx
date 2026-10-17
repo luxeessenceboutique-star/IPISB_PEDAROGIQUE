@@ -17,10 +17,14 @@ export const Route = createFileRoute("/dashboard/continuous-assessments_/$assess
 });
 
 type Section = { id: string; consigne: string; bareme: number; corrige: string };
+type JuryMember = { name: string; role: string };
 type Assessment = {
   id: string; title: string; filiere: string | null; niveau: string | null;
   formateur: string | null; date_evaluation: string | null; duree_epreuve: string | null;
   total_points: number; sections: Section[]; status: "draft" | "published";
+  doc_type?: "controle_continu" | "examen";
+  jury?: JuryMember[];
+  pratique_sections?: Section[];
 };
 
 const labelStyle = { fontFamily: '"Manrope", system-ui, sans-serif', fontSize: 11, fontWeight: 600, color: "oklch(48% 0.02 180)", letterSpacing: ".08em", textTransform: "uppercase" as const };
@@ -79,6 +83,37 @@ function ContinuousAssessmentEditorPage() {
     setDirty(true);
   }
 
+  // ── Épreuve pratique (doc_type='examen' uniquement) ──
+  function patchPratique(id: string, fields: Partial<Section>) {
+    setAssessment(a => a ? { ...a, pratique_sections: (a.pratique_sections ?? []).map(s => s.id === id ? { ...s, ...fields } : s) } : a);
+    setDirty(true);
+  }
+  function addPratique() {
+    setAssessment(a => {
+      if (!a) return a;
+      const list = a.pratique_sections ?? [];
+      return { ...a, pratique_sections: [...list, { id: newSectionId(list), consigne: "", bareme: 0, corrige: "" }] };
+    });
+    setDirty(true);
+  }
+  function removePratique(id: string) {
+    if (!window.confirm("Supprimer cet exercice ?")) return;
+    setAssessment(a => a ? { ...a, pratique_sections: (a.pratique_sections ?? []).filter(s => s.id !== id) } : a);
+    setDirty(true);
+  }
+
+  // ── Jury (doc_type='examen' uniquement) ──
+  function patchJury(i: number, fields: Partial<JuryMember>) {
+    setAssessment(a => {
+      if (!a) return a;
+      const list = [...(a.jury ?? [])];
+      while (list.length <= i) list.push({ name: "", role: "" });
+      list[i] = { ...list[i], ...fields };
+      return { ...a, jury: list };
+    });
+    setDirty(true);
+  }
+
   async function aiRewrite(html: string, instruction: string): Promise<string> {
     try {
       const res: { html: string } = await api.post("/api/continuous-assessments/ai-edit", { html, instruction });
@@ -91,6 +126,7 @@ function ContinuousAssessmentEditorPage() {
 
   async function save() {
     if (!assessment) return;
+    const isExamen = assessment.doc_type === "examen";
     setSaving(true);
     try {
       await api.patch(`/api/continuous-assessments/${assessment.id}`, {
@@ -102,6 +138,7 @@ function ContinuousAssessmentEditorPage() {
         duree_epreuve: assessment.duree_epreuve,
         total_points: assessment.total_points,
         sections: assessment.sections,
+        ...(isExamen ? { jury: assessment.jury ?? [], pratique_sections: assessment.pratique_sections ?? [] } : {}),
       });
       toast.success("Enregistré.");
       setDirty(false);
@@ -130,7 +167,8 @@ function ContinuousAssessmentEditorPage() {
     if (dirty) { toast.error("Enregistrez vos modifications avant d'exporter."); return; }
     setExporting(true);
     try {
-      await api.download(`/api/continuous-assessments/${assessment.id}/export.docx`, `Controle_continu_${assessment.title}.docx`);
+      const prefix = assessment.doc_type === "examen" ? "Examen" : "Controle_continu";
+      await api.download(`/api/continuous-assessments/${assessment.id}/export.docx`, `${prefix}_${assessment.title}.docx`);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Échec de l'export.");
     } finally {
@@ -143,15 +181,18 @@ function ContinuousAssessmentEditorPage() {
   }
   if (!assessment) return null;
 
+  const isExamen = assessment.doc_type === "examen";
   const bareme_sum = assessment.sections.reduce((s, x) => s + (x.bareme || 0), 0);
   const bareme_ok = Math.abs(bareme_sum - assessment.total_points) < 0.01;
+  const jury = assessment.jury ?? [];
+  const pratique = assessment.pratique_sections ?? [];
 
   return (
     <div className="mx-auto max-w-3xl pb-16">
       <PageHead
-        eyebrow="Contrôle continu"
+        eyebrow={isExamen ? "Examen" : "Contrôle continu"}
         title={assessment.title}
-        sub={`${assessment.sections.length} exercice${assessment.sections.length !== 1 ? "s" : ""} · ${bareme_sum}/${assessment.total_points} pts${assessment.status === "published" ? " · Finalisé" : " · Brouillon"}`}
+        sub={`${assessment.sections.length} question${assessment.sections.length !== 1 ? "s" : ""} · ${bareme_sum}/${assessment.total_points} pts${assessment.status === "published" ? " · Finalisé" : " · Brouillon"}`}
         actions={
           <button type="button" className="btn-c btn-c-ghost btn-c-sm" onClick={() => navigate({ to: "/dashboard/continuous-assessments" })}>
             <ArrowLeft size={14} strokeWidth={1.7} />Retour
@@ -185,10 +226,12 @@ function ContinuousAssessmentEditorPage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label style={labelStyle}>Formateur</label>
-            <Input className="mt-1.5" value={assessment.formateur ?? ""} onChange={e => patch({ formateur: e.target.value })} />
-          </div>
+          {!isExamen && (
+            <div>
+              <label style={labelStyle}>Formateur</label>
+              <Input className="mt-1.5" value={assessment.formateur ?? ""} onChange={e => patch({ formateur: e.target.value })} />
+            </div>
+          )}
           <div>
             <label style={labelStyle}>Barème total</label>
             <Input className="mt-1.5" type="number" min="1" step="0.5" value={assessment.total_points} onChange={e => patch({ total_points: parseFloat(e.target.value) || 0 })} />
@@ -196,8 +239,25 @@ function ContinuousAssessmentEditorPage() {
         </div>
       </div>
 
+      {isExamen && (
+        <div className="dash-card space-y-3 p-5 mb-5">
+          <div>
+            <span className="text-sm font-semibold font-display">Membres du jury</span>
+            <p className="text-xs text-muted-foreground mt-0.5">Jusqu'à 5 — nom et rôle (ex. « Président du jury d'examens »).</p>
+          </div>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="grid grid-cols-2 gap-2">
+                <Input value={jury[i]?.name ?? ""} onChange={e => patchJury(i, { name: e.target.value })} placeholder="Nom" className="text-sm" />
+                <Input value={jury[i]?.role ?? ""} onChange={e => patchJury(i, { role: e.target.value })} placeholder="Rôle" className="text-sm" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-semibold font-display">Exercices</span>
+        <span className="text-sm font-semibold font-display">{isExamen ? "Épreuve théorique" : "Exercices"}</span>
         <span className={`text-xs ${bareme_ok ? "text-muted-foreground" : "text-destructive font-medium"}`}>
           Total barème : {bareme_sum} / {assessment.total_points} pts{!bareme_ok && " — à ajuster"}
         </span>
@@ -207,11 +267,11 @@ function ContinuousAssessmentEditorPage() {
         {assessment.sections.map((s, i) => (
           <div key={s.id} className="dash-card p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-semibold font-display">Exercice {i + 1}</span>
+              <span className="text-sm font-semibold font-display">Question {i + 1}</span>
               <Input type="number" min="0" step="0.5" value={s.bareme} onChange={e => patchSection(s.id, { bareme: parseFloat(e.target.value) || 0 })}
                 className="h-7 w-20 text-sm ml-2" />
               <span className="text-xs text-muted-foreground">pts</span>
-              <button type="button" onClick={() => removeSection(s.id)} className="ml-auto btn-c btn-c-ghost btn-c-sm" style={{ color: "var(--pal-danger)" }} title="Supprimer l'exercice">
+              <button type="button" onClick={() => removeSection(s.id)} className="ml-auto btn-c btn-c-ghost btn-c-sm" style={{ color: "var(--pal-danger)" }} title="Supprimer la question">
                 <Trash2 size={13} strokeWidth={1.7} />
               </button>
             </div>
@@ -221,23 +281,58 @@ function ContinuousAssessmentEditorPage() {
                 value={s.consigne}
                 onChange={html => patchSection(s.id, { consigne: html })}
                 onAiRewrite={instruction => aiRewrite(s.consigne, instruction)}
-                placeholder="Énoncé de l'exercice…"
+                placeholder="Énoncé de la question…"
               />
-              <RichTextField
-                label="Corrigé type"
-                value={s.corrige}
-                onChange={html => patchSection(s.id, { corrige: html })}
-                onAiRewrite={instruction => aiRewrite(s.corrige, instruction)}
-                placeholder="Réponse modèle attendue…"
-              />
+              {!isExamen && (
+                <RichTextField
+                  label="Corrigé type"
+                  value={s.corrige}
+                  onChange={html => patchSection(s.id, { corrige: html })}
+                  onAiRewrite={instruction => aiRewrite(s.corrige, instruction)}
+                  placeholder="Réponse modèle attendue…"
+                />
+              )}
             </div>
           </div>
         ))}
 
         <button type="button" onClick={addSection} className="btn-c btn-c-soft w-full justify-center">
-          <Plus size={15} strokeWidth={1.8} />Ajouter un exercice
+          <Plus size={15} strokeWidth={1.8} />{isExamen ? "Ajouter une question" : "Ajouter un exercice"}
         </button>
       </div>
+
+      {isExamen && (
+        <>
+          <div className="flex items-center justify-between mb-2 mt-7">
+            <span className="text-sm font-semibold font-display">Épreuve pratique <span className="text-xs font-normal text-muted-foreground">(facultatif — n'apparaît dans le Word que si au moins une question est ajoutée ici)</span></span>
+          </div>
+          <div className="space-y-4">
+            {pratique.map((s, i) => (
+              <div key={s.id} className="dash-card p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-semibold font-display">Question {i + 1}</span>
+                  <Input type="number" min="0" step="0.5" value={s.bareme} onChange={e => patchPratique(s.id, { bareme: parseFloat(e.target.value) || 0 })}
+                    className="h-7 w-20 text-sm ml-2" />
+                  <span className="text-xs text-muted-foreground">pts</span>
+                  <button type="button" onClick={() => removePratique(s.id)} className="ml-auto btn-c btn-c-ghost btn-c-sm" style={{ color: "var(--pal-danger)" }} title="Supprimer la question">
+                    <Trash2 size={13} strokeWidth={1.7} />
+                  </button>
+                </div>
+                <RichTextField
+                  label="Consigne (énoncé étudiant)"
+                  value={s.consigne}
+                  onChange={html => patchPratique(s.id, { consigne: html })}
+                  onAiRewrite={instruction => aiRewrite(s.consigne, instruction)}
+                  placeholder="Énoncé de l'épreuve pratique…"
+                />
+              </div>
+            ))}
+            <button type="button" onClick={addPratique} className="btn-c btn-c-soft w-full justify-center">
+              <Plus size={15} strokeWidth={1.8} />Ajouter une question pratique
+            </button>
+          </div>
+        </>
+      )}
 
       <div className="sticky bottom-0 mt-6 flex items-center justify-between gap-2 rounded-xl border border-border bg-background/95 p-3 backdrop-blur">
         <button type="button" onClick={togglePublish} className="btn-c btn-c-ghost btn-c-sm">

@@ -9,7 +9,12 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { PageHead } from "@/components/dashboard/ui";
 
+type NewAssessmentSearch = { type?: "controle_continu" | "examen" };
+
 export const Route = createFileRoute("/dashboard/continuous-assessments_/new")({
+  validateSearch: (search: Record<string, unknown>): NewAssessmentSearch => ({
+    type: search.type === "examen" ? "examen" : search.type === "controle_continu" ? "controle_continu" : undefined,
+  }),
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/auth" });
@@ -18,9 +23,14 @@ export const Route = createFileRoute("/dashboard/continuous-assessments_/new")({
 });
 
 type Course = { id: string; title: string };
+type JuryMember = { name: string; role: string };
 
 function NewContinuousAssessmentPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
+
+  const [docType, setDocType] = useState<"controle_continu" | "examen">(search.type ?? "controle_continu");
+  const isExamen = docType === "examen";
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -34,7 +44,18 @@ function NewContinuousAssessmentPage() {
   const [dureeEpreuve, setDureeEpreuve] = useState("");
   const [totalPoints, setTotalPoints] = useState("20");
   const [instructions, setInstructions] = useState("");
+  const [jury, setJury] = useState<JuryMember[]>([
+    { name: "", role: "Président du jury d'examens" },
+    { name: "", role: "Membre externe" },
+    { name: "", role: "Membre interne" },
+    { name: "", role: "Membre interne" },
+    { name: "", role: "Représentant de l'administration" },
+  ]);
   const [generating, setGenerating] = useState(false);
+
+  function updateJury(i: number, field: keyof JuryMember, value: string) {
+    setJury(prev => prev.map((m, idx) => (idx === i ? { ...m, [field]: value } : m)));
+  }
 
   useEffect(() => {
     (async () => {
@@ -73,6 +94,7 @@ function NewContinuousAssessmentPage() {
       const assessment = await api.post("/api/continuous-assessments/generate", {
         title: title.trim(),
         course_ids: Array.from(selected),
+        doc_type: docType,
         filiere: filiere.trim() || null,
         niveau: niveau.trim() || null,
         formateur: formateur.trim() || null,
@@ -80,8 +102,9 @@ function NewContinuousAssessmentPage() {
         duree_epreuve: dureeEpreuve.trim() || null,
         total_points: points,
         instructions: instructions.trim() || null,
+        jury: isExamen ? jury.filter(m => m.name.trim()) : undefined,
       });
-      toast.success("Contrôle continu généré — vous pouvez maintenant le relire et l'éditer.");
+      toast.success(isExamen ? "Examen généré — vous pouvez maintenant le relire et l'éditer." : "Contrôle continu généré — vous pouvez maintenant le relire et l'éditer.");
       navigate({ to: "/dashboard/continuous-assessments/$assessmentId/editor", params: { assessmentId: assessment.id } });
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Échec de la génération.");
@@ -93,9 +116,11 @@ function NewContinuousAssessmentPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHead
-        eyebrow="Contrôle continu"
-        title="Générer une épreuve"
-        sub="L'IA rédige les exercices (consigne + barème + corrigé) à partir du contenu réellement publié des cours sélectionnés."
+        eyebrow={isExamen ? "Examen" : "Contrôle continu"}
+        title={isExamen ? "Générer un examen" : "Générer une épreuve"}
+        sub={isExamen
+          ? "L'IA rédige l'épreuve théorique (consigne + barème) à partir du contenu réellement publié des cours sélectionnés. L'épreuve pratique s'ajoute ensuite à la main dans l'éditeur, si besoin."
+          : "L'IA rédige les exercices (consigne + barème + corrigé) à partir du contenu réellement publié des cours sélectionnés."}
         actions={
           <button type="button" className="btn-c btn-c-ghost btn-c-sm" onClick={() => navigate({ to: "/dashboard/continuous-assessments" })}>
             <ArrowLeft size={14} strokeWidth={1.7} />Retour
@@ -104,6 +129,22 @@ function NewContinuousAssessmentPage() {
       />
 
       <div className="space-y-5">
+        {!search.type && (
+          <div className="dash-card p-5">
+            <label className="text-sm font-medium">Type de document</label>
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={() => setDocType("controle_continu")}
+                className={`btn-c btn-c-sm ${docType === "controle_continu" ? "btn-c-primary" : "btn-c-ghost"}`}>
+                Contrôle continu
+              </button>
+              <button type="button" onClick={() => setDocType("examen")}
+                className={`btn-c btn-c-sm ${docType === "examen" ? "btn-c-primary" : "btn-c-ghost"}`}>
+                Examen
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="dash-card p-5">
           <label className="text-sm font-medium">Cours * <span className="text-xs text-muted-foreground font-normal">(sélection multiple)</span></label>
           {loadingCourses ? (
@@ -151,10 +192,12 @@ function NewContinuousAssessmentPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium">Formateur</label>
-              <Input className="mt-1.5" value={formateur} onChange={e => setFormateur(e.target.value)} placeholder="Nom du formateur" />
-            </div>
+            {!isExamen && (
+              <div>
+                <label className="text-sm font-medium">Formateur</label>
+                <Input className="mt-1.5" value={formateur} onChange={e => setFormateur(e.target.value)} placeholder="Nom du formateur" />
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium">Barème total</label>
               <Input className="mt-1.5" type="number" min="1" step="0.5" value={totalPoints} onChange={e => setTotalPoints(e.target.value)} />
@@ -166,6 +209,20 @@ function NewContinuousAssessmentPage() {
               placeholder="ex. Mettre l'accent sur les définitions et les études de cas, éviter les questions purement théoriques." />
           </div>
         </div>
+
+        {isExamen && (
+          <div className="dash-card p-5">
+            <label className="text-sm font-medium">Membres du jury <span className="text-xs text-muted-foreground font-normal">(facultatif — modifiable ensuite dans l'éditeur)</span></label>
+            <div className="mt-2 space-y-2">
+              {jury.map((m, i) => (
+                <div key={i} className="grid grid-cols-2 gap-2">
+                  <Input value={m.name} onChange={e => updateJury(i, "name", e.target.value)} placeholder="Nom" className="text-sm" />
+                  <Input value={m.role} onChange={e => updateJury(i, "role", e.target.value)} placeholder="Rôle" className="text-sm" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end">
           <Button className="border-0 bg-gradient-brand text-white" onClick={generate} disabled={generating}>

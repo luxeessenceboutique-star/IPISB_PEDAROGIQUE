@@ -10,6 +10,7 @@ from models import ContinuousAssessmentGenerate, ContinuousAssessmentUpdate, AiE
 from utils.audit import log_audit
 from utils.controle_continu_generation import gather_course_content, generate_assessment_sections, edit_html_with_ai
 from utils.controle_continu_docx import render_controle_continu_docx
+from utils.examen_docx import render_examen_docx
 from utils.safe_filename import safe_filename
 
 router = APIRouter(prefix="/continuous-assessments", tags=["continuous-assessments"])
@@ -71,6 +72,8 @@ async def generate_continuous_assessment(
     _require_creator(user)
     if not body.course_ids:
         raise HTTPException(400, "Sélectionnez au moins un cours")
+    if body.doc_type not in ("controle_continu", "examen"):
+        raise HTTPException(400, "doc_type invalide")
 
     courses = db.from_("courses").select("id, professor_id").in_("id", body.course_ids).execute().data or []
     if len(courses) != len(set(body.course_ids)):
@@ -101,7 +104,24 @@ async def generate_continuous_assessment(
         "status": "draft",
         "created_by": user.id,
     }
-    res = db.from_("continuous_assessments").insert(row).execute()
+    # doc_type/jury/pratique_sections (L66) — omis si la migration n'est pas
+    # encore appliquée, pour ne pas casser la génération d'un Contrôle
+    # continu classique (déjà en production) en attendant.
+    if body.doc_type != "controle_continu" or body.jury or body.pratique_sections:
+        row["doc_type"] = body.doc_type
+        row["jury"] = [j.model_dump() for j in body.jury] if body.jury else []
+        row["pratique_sections"] = [s.model_dump() for s in body.pratique_sections] if body.pratique_sections else []
+    try:
+        res = db.from_("continuous_assessments").insert(row).execute()
+    except Exception as e:
+        msg = str(e)
+        if ("doc_type" in row or "jury" in row or "pratique_sections" in row) and ("Could not find" in msg or "schema cache" in msg):
+            row.pop("doc_type", None)
+            row.pop("jury", None)
+            row.pop("pratique_sections", None)
+            res = db.from_("continuous_assessments").insert(row).execute()
+        else:
+            raise
     new_assessment = res.data[0]
     log_audit(db, user.id, "continuous_assessment.generate", "continuous_assessment", new_assessment["id"],
               {"course_ids": body.course_ids, "section_count": len(sections)})
@@ -125,9 +145,21 @@ async def update_continuous_assessment(
     if not updates:
         raise HTTPException(400, "Aucun champ à mettre à jour")
 
-    res = db.from_("continuous_assessments").update(updates).eq("id", assessment_id).execute()
+    try:
+        res = db.from_("continuous_assessments").update(updates).eq("id", assessment_id).execute()
+    except Exception as e:
+        msg = str(e)
+        new_cols = {"doc_type", "jury", "pratique_sections"} & updates.keys()
+        if new_cols and ("Could not find" in msg or "schema cache" in msg):
+            for k in new_cols:
+                updates.pop(k, None)
+            if not updates:
+                raise HTTPException(400, "La migration L66 n'est pas encore appliquée — impossible de modifier ce champ pour l'instant.")
+            res = db.from_("continuous_assessments").update(updates).eq("id", assessment_id).execute()
+        else:
+            raise
     log_audit(db, user.id, "continuous_assessment.update", "continuous_assessment", assessment_id,
-              {k: v for k, v in updates.items() if k != "sections"})
+              {k: v for k, v in updates.items() if k not in ("sections", "pratique_sections")})
     return res.data[0]
 
 
@@ -173,8 +205,12 @@ async def export_continuous_assessment_docx(
         **assessment,
         "date_evaluation": _fr_date(assessment.get("date_evaluation")),
     }
-    data = render_controle_continu_docx(payload)
-    filename = safe_filename(f"Controle_continu_{assessment['title']}.docx")
+    if assessment.get("doc_type") == "examen":
+        data = render_examen_docx(payload)
+        filename = safe_filename(f"Examen_{assessment['title']}.docx")
+    else:
+        data = render_controle_continu_docx(payload)
+        filename = safe_filename(f"Controle_continu_{assessment['title']}.docx")
     log_audit(db, user.id, "continuous_assessment.export", "continuous_assessment", assessment_id)
     return Response(
         content=data,

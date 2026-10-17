@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { GraduationCap, Plus, Loader2, Timer, AlertTriangle, ChevronRight, Eye, EyeOff, Pencil } from "lucide-react";
+import { GraduationCap, Plus, Loader2, Timer, AlertTriangle, ChevronRight, Eye, EyeOff, Pencil, Sparkles } from "lucide-react";
 import { ListSkeleton } from "@/components/Skeletons";
 import { PageHead, SectionLabel, EmptyHint } from "@/components/dashboard/ui";
 import { QuestionView } from "@/components/exams/QuestionView";
@@ -261,9 +261,15 @@ function ExamsPage() {
         title={t("dash.exams")}
         sub={t("exams.subtitle")}
         actions={canCreate ? (
-          <Link to="/dashboard/exams/new" className="btn-c btn-c-primary">
-            <Plus size={15} strokeWidth={1.7} />{t("exams.create")}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/dashboard/continuous-assessments/new" search={{ type: "examen" }} className="btn-c btn-c-soft">
+              <Sparkles size={15} strokeWidth={1.7} />
+              {lang === "fr" ? "Générer un examen avec l'IA" : lang === "ar" ? "توليد امتحان بالذكاء الاصطناعي" : "Generate an exam with AI"}
+            </Link>
+            <Link to="/dashboard/exams/new" className="btn-c btn-c-primary">
+              <Plus size={15} strokeWidth={1.7} />{t("exams.create")}
+            </Link>
+          </div>
         ) : undefined}
       />
 
