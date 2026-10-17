@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  FileText, Plus, Loader2, AlertCircle,
+  FileText, Loader2, AlertCircle,
   Send, Trash2, Paperclip, ExternalLink, BarChart3, ClipboardList, Upload, Check,
   Pencil, Copy, Save, X, Sparkles,
 } from "lucide-react";
@@ -80,11 +80,6 @@ function AssignmentsPage() {
     title: "", filiere: "", niveau: "", formateur: "", date_evaluation: "", duree_epreuve: "", total_points: "20", instructions: "",
   });
   const [aiGenerating, setAiGenerating] = useState(false);
-
-  // Create dialog
-  const [showCreate,  setShowCreate]  = useState(false);
-  const [creating,    setCreating]    = useState(false);
-  const [createForm,  setCreateForm]  = useState({ title: "", description: "", due_date: "", max_grade: "20", course_id: "" });
 
   // Delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -157,25 +152,6 @@ function AssignmentsPage() {
   const graded    = assignments.filter(a => a.submission?.grade !== null && a.submission?.grade !== undefined).length;
   const pending   = assignments.filter(a => !a.submission && !(a.due_date && new Date(a.due_date) < new Date())).length;
 
-  // ---------- Create ----------
-  async function createAssignment() {
-    if (!createForm.title.trim()) { toast.error(t("assignments.title_required")); return; }
-    if (!createForm.course_id)    { toast.error(t("assignments.course_required")); return; }
-    setCreating(true);
-    const { error } = await supabase.from("assignments").insert({
-      title:       createForm.title,
-      description: createForm.description || null,
-      due_date:    createForm.due_date || null,
-      max_grade:   parseFloat(createForm.max_grade) || 20,
-      course_id:   createForm.course_id,
-    });
-    setCreating(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(t("assignments.created"));
-    setShowCreate(false);
-    setCreateForm({ title: "", description: "", due_date: "", max_grade: "20", course_id: "" });
-    load();
-  }
 
   // ---------- AI generate (multi-cours) ----------
   function toggleAiCourse(id: string) {
@@ -382,15 +358,10 @@ function AssignmentsPage() {
               : `${pending} pending · ${submitted} submitted · ${graded} graded`)
           : t("assignments.subtitle")}
         actions={canCreate ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setShowAiGenerate(true)} className="btn-c btn-c-soft">
-              <Sparkles size={15} strokeWidth={1.7} />
-              {lang === "fr" ? "Générer avec l'IA (multi-cours)" : lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI (multi-course)"}
-            </button>
-            <button type="button" onClick={() => setShowCreate(true)} className="btn-c btn-c-primary">
-              <Plus size={15} strokeWidth={1.7} />{t("assignments.create")}
-            </button>
-          </div>
+          <button type="button" onClick={() => setShowAiGenerate(true)} className="btn-c btn-c-primary">
+            <Sparkles size={15} strokeWidth={1.7} />
+            {lang === "fr" ? "Générer avec l'IA (multi-cours)" : lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI (multi-course)"}
+          </button>
         ) : undefined}
       />
 
@@ -489,46 +460,6 @@ function AssignmentsPage() {
           )}
         </div>
       )}
-
-      {/* ── Create Dialog ── */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="font-display">{t("assignments.create")}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">{t("assignments.form.course")} *</label>
-              <Select value={createForm.course_id} onValueChange={v => setCreateForm(f => ({ ...f, course_id: v }))}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder={lang === "fr" ? "Choisir un cours" : lang === "ar" ? "اختر درسًا" : "Choose a course"} /></SelectTrigger>
-                <SelectContent>{myCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("assignments.form.title")} *</label>
-              <Input className="mt-1.5" value={createForm.title} onChange={e => setCreateForm(f => ({ ...f, title: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("assignments.form.description")}</label>
-              <Textarea className="mt-1.5" rows={3} value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">{t("assignments.form.due_date")}</label>
-                <Input className="mt-1.5" type="datetime-local" value={createForm.due_date} onChange={e => setCreateForm(f => ({ ...f, due_date: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">{t("assignments.form.max_grade")}</label>
-                <Input className="mt-1.5" type="number" min="1" value={createForm.max_grade} onChange={e => setCreateForm(f => ({ ...f, max_grade: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>{t("common.cancel")}</Button>
-            <Button className="border-0 bg-gradient-brand text-white" disabled={creating} onClick={createAssignment}>
-              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t("assignments.create")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── AI generate Dialog (Contrôle continu multi-cours) ── */}
       <Dialog open={showAiGenerate} onOpenChange={setShowAiGenerate}>
