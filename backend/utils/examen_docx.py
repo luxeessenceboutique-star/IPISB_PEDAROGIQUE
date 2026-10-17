@@ -31,6 +31,10 @@ JURY_COL_WIDTHS_CM = [4.47, 3.75, 3.50, 3.40, 3.75]
 
 
 def _set_margins(section) -> None:
+    # python-docx crée un document par défaut au format Letter — le gabarit
+    # est en A4 (comme tous les documents officiels de l'établissement).
+    section.page_width = Cm(21.0)
+    section.page_height = Cm(29.7)
     section.top_margin = Cm(0.75)
     section.bottom_margin = Cm(2.5)
     section.left_margin = Cm(2.5)

@@ -133,6 +133,13 @@ def _set_cell_borders(cell, *, sz: int = 4) -> None:
 
 # ── Mise en page ─────────────────────────────────────────────────────────────
 def _set_margins(section) -> None:
+    # python-docx crée un document par défaut au format Letter — le gabarit
+    # (comme tous les documents officiels de l'établissement) est en A4.
+    # Sans ce réglage explicite, toute la mise en page (marges en cm,
+    # largeurs de colonnes de tableau) est calculée pour la mauvaise taille
+    # de page et le rendu final ne ressemble pas du tout au gabarit.
+    section.page_width = Cm(21.0)
+    section.page_height = Cm(29.7)
     section.top_margin = Cm(1.0)
     section.bottom_margin = Cm(1.0)
     section.left_margin = Cm(1.25)
