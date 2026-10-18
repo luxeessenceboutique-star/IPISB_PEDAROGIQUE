@@ -6,7 +6,10 @@ from fastapi.responses import Response
 from supabase import Client
 
 from deps import get_current_user, get_db, CurrentUser
-from models import ContinuousAssessmentGenerate, ContinuousAssessmentUpdate, AiEditRequest
+from models import (
+    ContinuousAssessmentGenerate, ContinuousAssessmentUpdate, AiEditRequest,
+    ContinuousAssessmentGradesUpsert,
+)
 from utils.audit import log_audit
 from utils.controle_continu_generation import gather_course_content, generate_assessment_sections, edit_html_with_ai
 from utils.controle_continu_docx import render_controle_continu_docx
@@ -191,6 +194,89 @@ async def ai_edit_block(
     except ValueError as e:
         raise HTTPException(502, str(e))
     return {"html": html}
+
+
+@router.get("/{assessment_id}/grades")
+async def get_assessment_grades(
+    assessment_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    """Roster + notes EFCF déjà saisies pour un Examen — résout la classe
+    via le 1er cours ciblé par l'Examen (en pratique un Examen cible un
+    seul cours, cf. le gabarit) → class_courses → class_students, même
+    cheminement que compute_overall_average."""
+    _require_creator(user)
+    assessment = _load_owned(db, assessment_id, user)
+    if assessment.get("doc_type") != "examen":
+        raise HTTPException(400, "La saisie des notes n'est disponible que pour un Examen")
+
+    course_ids = assessment.get("course_ids") or []
+    has_pratique = bool(assessment.get("pratique_sections"))
+    if not course_ids:
+        return {"students": [], "has_pratique": has_pratique}
+
+    class_rows = db.from_("class_courses").select("class_id").eq("course_id", course_ids[0]).execute().data or []
+    class_ids = list({r["class_id"] for r in class_rows})
+    if not class_ids:
+        return {"students": [], "has_pratique": has_pratique}
+
+    memberships = db.from_("class_students").select("student_id").in_("class_id", class_ids).execute().data or []
+    student_ids = list({m["student_id"] for m in memberships})
+    if not student_ids:
+        return {"students": [], "has_pratique": has_pratique}
+
+    profiles = db.from_("profiles").select("id, email, full_name").in_("id", student_ids).execute().data or []
+    try:
+        grade_rows = (
+            db.from_("continuous_assessment_grades").select("student_id, theorique_score, pratique_score")
+            .eq("assessment_id", assessment_id).execute().data or []
+        )
+    except Exception:
+        grade_rows = []  # L67 pas encore appliquée — liste d'élèves non notés plutôt qu'une erreur
+    grade_map = {g["student_id"]: g for g in grade_rows}
+
+    students = [{
+        "id": p["id"], "full_name": p.get("full_name"), "email": p.get("email"),
+        "theorique_score": grade_map.get(p["id"], {}).get("theorique_score"),
+        "pratique_score": grade_map.get(p["id"], {}).get("pratique_score"),
+    } for p in profiles]
+    students.sort(key=lambda s: (s["full_name"] or s["email"] or "").lower())
+    return {"students": students, "has_pratique": has_pratique}
+
+
+@router.put("/{assessment_id}/grades")
+async def set_assessment_grades(
+    assessment_id: str,
+    body: ContinuousAssessmentGradesUpsert,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    _require_creator(user)
+    assessment = _load_owned(db, assessment_id, user)
+    if assessment.get("doc_type") != "examen":
+        raise HTTPException(400, "La saisie des notes n'est disponible que pour un Examen")
+    if not body.grades:
+        return {"ok": True}
+
+    existing = (
+        db.from_("continuous_assessment_grades").select("id, student_id")
+        .eq("assessment_id", assessment_id).in_("student_id", list(body.grades.keys()))
+        .execute().data or []
+    )
+    by_student = {r["student_id"]: r["id"] for r in existing}
+    to_insert = []
+    for student_id, entry in body.grades.items():
+        payload = {"theorique_score": entry.theorique_score, "pratique_score": entry.pratique_score, "graded_by": user.id}
+        if student_id in by_student:
+            db.from_("continuous_assessment_grades").update(payload).eq("id", by_student[student_id]).execute()
+        else:
+            to_insert.append({"assessment_id": assessment_id, "student_id": student_id, **payload})
+    if to_insert:
+        db.from_("continuous_assessment_grades").insert(to_insert).execute()
+    log_audit(db, user.id, "continuous_assessment.grades_update", "continuous_assessment", assessment_id,
+              {"count": len(body.grades)})
+    return {"ok": True}
 
 
 @router.get("/{assessment_id}/export.docx")

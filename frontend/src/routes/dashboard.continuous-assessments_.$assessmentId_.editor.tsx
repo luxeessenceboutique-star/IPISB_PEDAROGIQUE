@@ -25,9 +25,94 @@ type Assessment = {
   doc_type?: "controle_continu" | "examen";
   jury?: JuryMember[];
   pratique_sections?: Section[];
+  course_ids?: string[];
 };
 
 const labelStyle = { fontFamily: '"Manrope", system-ui, sans-serif', fontSize: 11, fontWeight: 600, color: "oklch(48% 0.02 180)", letterSpacing: ".08em", textTransform: "uppercase" as const };
+
+type GradeStudent = { id: string; full_name: string | null; email: string; theorique_score: number | null; pratique_score: number | null };
+
+/** Saisie des notes EFCF (Théorique/Pratique) d'un Examen — une fois la
+ * copie corrigée, même boucle generate → imprimer → corriger → saisir que
+ * le reste de cette fiche. Résout le groupe d'élèves côté backend (via le
+ * cours ciblé par l'Examen → classe → effectif), pas besoin de le
+ * sélectionner ici. */
+function ExamGradesPanel({ assessmentId, totalPoints, pratiqueTotal }: { assessmentId: string; totalPoints: number; pratiqueTotal: number }) {
+  const [students, setStudents] = useState<GradeStudent[]>([]);
+  const [hasPratique, setHasPratique] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data: { students: GradeStudent[]; has_pratique: boolean } = await api.get(`/api/continuous-assessments/${assessmentId}/grades`);
+      setStudents(data.students);
+      setHasPratique(data.has_pratique);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erreur de chargement des élèves.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [assessmentId]);
+
+  function setScore(id: string, field: "theorique_score" | "pratique_score", raw: string) {
+    const value = raw === "" ? null : parseFloat(raw);
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, [field]: Number.isNaN(value as number) ? null : value } : s));
+  }
+
+  async function saveGrades() {
+    setSaving(true);
+    try {
+      const grades: Record<string, { theorique_score: number | null; pratique_score: number | null }> = {};
+      for (const s of students) grades[s.id] = { theorique_score: s.theorique_score, pratique_score: s.pratique_score };
+      await api.put(`/api/continuous-assessments/${assessmentId}/grades`, { grades });
+      toast.success("Notes enregistrées.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Échec de l'enregistrement des notes.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="dash-card p-6"><div className="shimmer" style={{ height: 18, width: 200, borderRadius: 999 }} /></div>;
+  }
+  if (students.length === 0) {
+    return <div className="dash-card p-6 text-sm text-muted-foreground">Aucun élève trouvé — vérifiez que le cours ciblé par cet Examen est bien assigné à une classe.</div>;
+  }
+
+  return (
+    <div className="dash-card p-4">
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 px-1 text-xs font-medium text-muted-foreground">
+          <span className="flex-1">Élève</span>
+          <span className="w-24 text-center">Théorique /{totalPoints}</span>
+          {hasPratique && <span className="w-24 text-center">Pratique /{pratiqueTotal}</span>}
+        </div>
+        {students.map(s => (
+          <div key={s.id} className="flex items-center gap-3 rounded-lg px-1 py-1">
+            <span className="flex-1 text-sm">{s.full_name || s.email}</span>
+            <Input type="number" min="0" step="0.5" className="w-24 h-8 text-sm text-center"
+              value={s.theorique_score ?? ""} onChange={e => setScore(s.id, "theorique_score", e.target.value)} />
+            {hasPratique && (
+              <Input type="number" min="0" step="0.5" className="w-24 h-8 text-sm text-center"
+                value={s.pratique_score ?? ""} onChange={e => setScore(s.id, "pratique_score", e.target.value)} />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button type="button" onClick={saveGrades} disabled={saving} className="btn-c btn-c-primary">
+          {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} strokeWidth={1.8} />}
+          {saving ? "Enregistrement…" : "Enregistrer les notes"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function newSectionId(sections: Section[]) {
   const n = sections.reduce((max, s) => {
@@ -46,6 +131,7 @@ function ContinuousAssessmentEditorPage() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [view, setView] = useState<"epreuve" | "notes">("epreuve");
 
   async function load() {
     setLoading(true);
@@ -200,6 +286,21 @@ function ContinuousAssessmentEditorPage() {
         }
       />
 
+      {isExamen && (
+        <div className="flex gap-2 mb-5">
+          <button type="button" onClick={() => setView("epreuve")} className={`btn-c btn-c-sm ${view === "epreuve" ? "btn-c-soft" : "btn-c-ghost"}`}>Épreuve</button>
+          <button type="button" onClick={() => setView("notes")} className={`btn-c btn-c-sm ${view === "notes" ? "btn-c-soft" : "btn-c-ghost"}`}>Notes</button>
+        </div>
+      )}
+
+      {isExamen && view === "notes" ? (
+        <ExamGradesPanel
+          assessmentId={assessment.id}
+          totalPoints={assessment.total_points}
+          pratiqueTotal={pratique.reduce((s, x) => s + (x.bareme || 0), 0)}
+        />
+      ) : (
+      <>
       <div className="dash-card space-y-4 p-5 mb-5">
         <div>
           <label style={labelStyle}>Titre</label>
@@ -333,7 +434,10 @@ function ContinuousAssessmentEditorPage() {
           </div>
         </>
       )}
+      </>
+      )}
 
+      {view === "epreuve" && (
       <div className="sticky bottom-0 mt-6 flex items-center justify-between gap-2 rounded-xl border border-border bg-background/95 p-3 backdrop-blur">
         <button type="button" onClick={togglePublish} className="btn-c btn-c-ghost btn-c-sm">
           {assessment.status === "published" ? <RotateCcw size={14} strokeWidth={1.7} /> : <CheckCircle2 size={14} strokeWidth={1.7} />}
@@ -350,6 +454,7 @@ function ContinuousAssessmentEditorPage() {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

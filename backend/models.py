@@ -338,6 +338,35 @@ class CourseGradeWeightsUpdate(BaseModel):
     quiz_weight: int
 
 
+# ── EFCF (Examen de fin de cursus) grade entry — doc_type='examen' only ────
+class ContinuousAssessmentGradeEntry(BaseModel):
+    theorique_score: Optional[float] = None
+    pratique_score: Optional[float] = None
+
+
+class ContinuousAssessmentGradesUpsert(BaseModel):
+    """Saisie des notes EFCF (Théorique + Pratique) pour les élèves d'un
+    Examen — {student_id: {theorique_score, pratique_score}}."""
+    grades: dict[str, ContinuousAssessmentGradeEntry]
+
+
+# ── Stage (par classe, non rattaché à une UF) ───────────────────────────────
+class StageGradeEntry(BaseModel):
+    grade: Optional[float] = None
+    coefficient: float = 3
+
+
+class StageGradesUpsert(BaseModel):
+    grades: dict[str, StageGradeEntry]
+
+
+# ── Pondération de la moyenne générale (MG1) par classe — somme libre ──────
+class ClassGradeWeightsUpdate(BaseModel):
+    cc_weight: float
+    efcf_th_weight: float
+    efcf_pr_weight: float
+
+
 class AnnouncementCreate(BaseModel):
     titre: str
     corps: str

@@ -38,6 +38,13 @@ type ModuleGrade = { grade: number | null; devoir_avg: number | null; exam_avg: 
 type QuickCategory = "devoir" | "exam";
 type QuickAssignment = { id: string; title: string; max_grade: number; quick_grade_category: QuickCategory; grades: Record<string, number | null> };
 
+// MG1 = moyenne générale de la cohorte (MPCC1 × MPEFCFT1 × MPEFCFP1, cf.
+// GET /classes/{id}/mg1-summary) — en plus de la moyenne par module déjà
+// affichée, c'est le pendant natif des feuilles "P1 G1"/"Modalité de
+// passage" de l'ancien classeur Excel.
+type ClassSummary = { mpcc1: number | null; mpefcft1: number | null; mpefcfp1: number | null; mg1: number | null };
+type StageEntry = { grade: number | null; coefficient: number };
+
 const CATEGORY_LABELS: Record<QuickCategory, string> = { devoir: "Contrôle continu", exam: "Examen" };
 
 function gradeColor(v: number | null): string {
@@ -123,6 +130,165 @@ function WeightsModal({ courseId, courseTitle, onClose }: { courseId: string; co
   );
 }
 
+// Note de Stage — une seule par élève par classe, non rattachée à un
+// module (cf. GET/PUT /classes/{id}/stage-grades). Même squelette que
+// WeightsModal, en plus large (liste d'élèves).
+function StageModal({ classId, students, onClose }: { classId: string; students: StudentItem[]; onClose: () => void }) {
+  const [entries, setEntries] = useState<Record<string, StageEntry>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get(`/api/classes/${classId}/stage-grades`)
+      .then((d: Record<string, { grade: number | null; coefficient: number }>) => {
+        const next: Record<string, StageEntry> = {};
+        students.forEach(s => { next[s.id] = d[s.id] ? { grade: d[s.id].grade, coefficient: d[s.id].coefficient } : { grade: null, coefficient: 3 }; });
+        setEntries(next);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classId]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.put(`/api/classes/${classId}/stage-grades`, { grades: entries });
+      toast.success("Notes de stage enregistrées.");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="anim-fade" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
+      <div className="anim-pop" style={{ background: PAL.paper, borderRadius: 14, padding: 26, width: 460, maxWidth: "94vw", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,.15)" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+          <h2 style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontSize: 20, fontWeight: 500, color: PAL.ink, margin: 0 }}>Note de Stage</h2>
+          <button onClick={onClose} style={{ background: "none", border: 0, cursor: "pointer", color: PAL.muted, marginTop: 2 }}><X size={17} strokeWidth={1.7} /></button>
+        </div>
+        {loading ? (
+          <div className="shimmer" style={{ height: 16, width: 200, borderRadius: 999, marginTop: 14 }} />
+        ) : (
+          <>
+            <p style={{ fontSize: 12, color: PAL.muted, marginTop: 8, marginBottom: 14, lineHeight: 1.5 }}>
+              Une note par élève, comptée dans MPEFCFP1 avec son propre coefficient (défaut 3, comme dans l'ancien classeur).
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {students.map(s => (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                  <span style={{ flex: 1, fontSize: 13, color: PAL.ink }}>{s.full_name || s.email}</span>
+                  <input
+                    type="number" min={0} step="0.25" placeholder="—"
+                    value={entries[s.id]?.grade ?? ""}
+                    onChange={e => setEntries(m => ({ ...m, [s.id]: { ...(m[s.id] ?? { coefficient: 3 }), grade: e.target.value === "" ? null : parseFloat(e.target.value) } }))}
+                    style={{ ...fieldStyle, width: 72, textAlign: "right", padding: "6px 8px" }}
+                  />
+                  <input
+                    type="number" min={0.5} step="0.5" title="Coefficient"
+                    value={entries[s.id]?.coefficient ?? 3}
+                    onChange={e => setEntries(m => ({ ...m, [s.id]: { ...(m[s.id] ?? { grade: null }), coefficient: parseFloat(e.target.value) || 3 } }))}
+                    style={{ ...fieldStyle, width: 56, textAlign: "right", padding: "6px 8px", color: PAL.muted }}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
+          <button onClick={onClose} className="btn-c btn-c-ghost">Annuler</button>
+          <button onClick={save} disabled={saving || loading} className="btn-c btn-c-primary" style={{ opacity: saving || loading ? 0.6 : 1 }}>
+            {saving ? "…" : "Enregistrer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Pondération de la moyenne générale (MG1) — à la différence de
+// WeightsModal (pourcentages d'un module, somme=100), ici les 3 poids
+// sont des coefficients libres (défaut 3/2/3, comme l'ancien classeur
+// Excel qui divise par 8, pas par 100).
+function ClassWeightsModal({ classId, onClose }: { classId: string; onClose: () => void }) {
+  const [weights, setWeights] = useState({ cc_weight: 3, efcf_th_weight: 2, efcf_pr_weight: 3 });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get(`/api/classes/${classId}/grade-weights`)
+      .then(d => setWeights({ cc_weight: d.cc_weight, efcf_th_weight: d.efcf_th_weight, efcf_pr_weight: d.efcf_pr_weight }))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [classId]);
+
+  const total = weights.cc_weight + weights.efcf_th_weight + weights.efcf_pr_weight;
+
+  async function save() {
+    if (weights.cc_weight <= 0 || weights.efcf_th_weight <= 0 || weights.efcf_pr_weight <= 0) {
+      toast.error("Les poids doivent être strictement positifs.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/api/classes/${classId}/grade-weights`, weights);
+      toast.success("Pondération enregistrée.");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="anim-fade" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
+      <div className="anim-pop" style={{ background: PAL.paper, borderRadius: 14, padding: 26, width: 400, maxWidth: "94vw", boxShadow: "0 20px 50px rgba(0,0,0,.15)" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+          <h2 style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontSize: 20, fontWeight: 500, color: PAL.ink, margin: 0 }}>Pondération — Moyenne générale (MG1)</h2>
+          <button onClick={onClose} style={{ background: "none", border: 0, cursor: "pointer", color: PAL.muted, marginTop: 2 }}><X size={17} strokeWidth={1.7} /></button>
+        </div>
+        {loading ? (
+          <div className="shimmer" style={{ height: 16, width: 200, borderRadius: 999, marginTop: 14 }} />
+        ) : (
+          <>
+            <p style={{ fontSize: 12, color: PAL.muted, marginTop: 8, marginBottom: 14, lineHeight: 1.5 }}>
+              MG1 = (MPCC1 × ce coefficient + MPEFCFT1 × ce coefficient + MPEFCFP1 × ce coefficient) ÷ somme des coefficients — pas forcément 100%, comme dans l'ancien classeur.
+            </p>
+            {[
+              { key: "cc_weight" as const, label: "MPCC1 (Contrôle continu)" },
+              { key: "efcf_th_weight" as const, label: "MPEFCFT1 (Examen Théorique)" },
+              { key: "efcf_pr_weight" as const, label: "MPEFCFP1 (Examen Pratique + Stage)" },
+            ].map(f => (
+              <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <label style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: PAL.ink }}>{f.label}</label>
+                <input
+                  type="number" min={0.5} step="0.5"
+                  value={weights[f.key]}
+                  onChange={e => setWeights(w => ({ ...w, [f.key]: parseFloat(e.target.value) || 0 }))}
+                  style={{ ...fieldStyle, width: 80, textAlign: "right" }}
+                />
+              </div>
+            ))}
+            <div style={{ textAlign: "right", fontSize: 12, fontWeight: 600, color: PAL.muted, marginBottom: 4 }}>
+              Somme : {total}
+            </div>
+          </>
+        )}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
+          <button onClick={onClose} className="btn-c btn-c-ghost">Annuler</button>
+          <button onClick={save} disabled={saving || loading} className="btn-c btn-c-primary" style={{ opacity: saving || loading ? 0.6 : 1 }}>
+            {saving ? "…" : "Enregistrer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GradesPage() {
   const { roles } = useAuth();
   const isAdmin = roles.includes("admin");
@@ -136,6 +302,12 @@ function GradesPage() {
   // Vue admin uniquement : moyenne générale + détail multi-modules.
   const [overallGrades, setOverallGrades] = useState<Record<string, OverallGrade | null>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Synthèse cohorte (MPCC1/MPEFCFT1/MPEFCFP1/MG1) + Stage + pondération MG1
+  // — vue admin consolidée uniquement, un seul appel groupé par classe.
+  const [mg1Summary, setMg1Summary] = useState<Record<string, ClassSummary>>({});
+  const [showStageModal, setShowStageModal] = useState(false);
+  const [showClassWeights, setShowClassWeights] = useState(false);
 
   // Saisie par module — professeur (ses cours) et admin.
   const [courses, setCourses] = useState<CourseItem[]>([]);
@@ -194,6 +366,21 @@ function GradesPage() {
     ).then(entries => { if (alive) setOverallGrades(Object.fromEntries(entries)); });
     return () => { alive = false; };
   }, [isAdmin, moduleId, students, classId]);
+
+  // Synthèse cohorte (MG1) — un seul appel groupé par classe, pas par élève
+  // (contrairement à overallGrades ci-dessus — le calcul EFCF est plus
+  // coûteux à résoudre, cf. backend compute_class_efcf_averages).
+  const loadMg1Summary = useCallback((cid: string) => {
+    if (!cid) { setMg1Summary({}); return; }
+    api.get(`/api/classes/${cid}/mg1-summary`)
+      .then((d: Record<string, ClassSummary>) => setMg1Summary(d ?? {}))
+      .catch(() => setMg1Summary({}));
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin || moduleId || !classId) { setMg1Summary({}); return; }
+    loadMg1Summary(classId);
+  }, [isAdmin, moduleId, classId, loadMg1Summary]);
 
   // Modules assignés à la classe affichée, parmi les cours accessibles
   // (GET /courses filtre déjà par rôle : professeur -> ses cours, admin -> tous).
@@ -329,6 +516,17 @@ function GradesPage() {
         Classe
       </SectionLabel>
 
+      {showCrossModuleView && classId && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <button type="button" onClick={() => setShowStageModal(true)} className="btn-c btn-c-ghost btn-c-sm">
+            <SlidersHorizontal size={13} strokeWidth={1.8} />Stage
+          </button>
+          <button type="button" onClick={() => setShowClassWeights(true)} className="btn-c btn-c-ghost btn-c-sm" title="Pondération de la moyenne générale (MG1)">
+            <SlidersHorizontal size={13} strokeWidth={1.8} />Pondération MG1
+          </button>
+        </div>
+      )}
+
       {classCourses.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <span style={{ fontFamily: sans, fontSize: 11, fontWeight: 600, color: PAL.muted, letterSpacing: ".08em", textTransform: "uppercase" as const }}>Module</span>
@@ -445,7 +643,7 @@ function GradesPage() {
             <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 560 }}>
               <thead>
                 <tr>
-                  {["#", "Élève", moduleId ? "Note du module / 20" : "Moyenne générale / 20", ...(showCrossModuleView ? [""] : [])].map((h, i) => (
+                  {["#", "Élève", moduleId ? "Note du module / 20" : (showCrossModuleView ? "MPCC1 / 20" : "Moyenne générale / 20"), ...(showCrossModuleView ? [""] : [])].map((h, i) => (
                     <th key={i} style={{ padding: "11px 14px", borderBottom: `1px solid ${PAL.line}`, textAlign: i === 2 ? "right" : "left", fontFamily: sans, fontSize: 11, fontWeight: 600, color: PAL.muted, letterSpacing: ".08em", textTransform: "uppercase" as const, whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -472,6 +670,21 @@ function GradesPage() {
                       {canExpand && isOpen && (
                         <tr key={`${s.id}-detail`}>
                           <td colSpan={4} style={{ padding: 0, borderBottom: `1px solid ${PAL.line}`, background: "var(--pal-pale)" }}>
+                            {mg1Summary[s.id] && (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 20, padding: "12px 20px", borderBottom: `1px dashed ${PAL.line}` }}>
+                                {([
+                                  ["MPCC1", mg1Summary[s.id].mpcc1],
+                                  ["MPEFCFT1", mg1Summary[s.id].mpefcft1],
+                                  ["MPEFCFP1", mg1Summary[s.id].mpefcfp1],
+                                  ["MG1", mg1Summary[s.id].mg1],
+                                ] as const).map(([label, v]) => (
+                                  <div key={label}>
+                                    <div style={{ fontFamily: sans, fontSize: 10, fontWeight: 600, color: PAL.muted, letterSpacing: ".06em", textTransform: "uppercase" as const }}>{label}</div>
+                                    <div style={{ fontFamily: mono, fontSize: 15, fontWeight: 700, color: gradeColor(v), marginTop: 2 }}>{v != null ? v.toFixed(2) : "—"}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             {!overallGrades[s.id]?.courses?.length ? (
                               <div style={{ padding: "12px 20px", fontSize: 12.5, color: PAL.muted, fontStyle: "italic" }}>Aucune note disponible pour cet élève.</div>
                             ) : (
@@ -514,6 +727,13 @@ function GradesPage() {
           courseTitle={classCourses.find(c => c.id === moduleId)?.title ?? ""}
           onClose={() => { setShowWeights(false); loadModuleGrades(moduleId, students); }}
         />
+      )}
+
+      {showStageModal && classId && (
+        <StageModal classId={classId} students={students} onClose={() => { setShowStageModal(false); loadMg1Summary(classId); }} />
+      )}
+      {showClassWeights && classId && (
+        <ClassWeightsModal classId={classId} onClose={() => { setShowClassWeights(false); loadMg1Summary(classId); }} />
       )}
     </div>
   );
