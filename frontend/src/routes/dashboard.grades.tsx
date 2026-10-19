@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { Award, ChevronDown, ChevronRight, Save, Plus, X, Trash2, SlidersHorizontal } from "lucide-react";
+import { Award, ChevronDown, ChevronRight, Save, Plus, X, Trash2, SlidersHorizontal, Pencil, Gavel, FileSpreadsheet, FileText } from "lucide-react";
 import { PageHead, SectionLabel, EmptyHint } from "@/components/dashboard/ui";
 
 export const Route = createFileRoute("/dashboard/grades")({
@@ -45,7 +45,49 @@ type QuickAssignment = { id: string; title: string; max_grade: number; quick_gra
 type ClassSummary = { mpcc1: number | null; mpefcft1: number | null; mpefcfp1: number | null; mg1: number | null };
 type StageEntry = { grade: number | null; coefficient: number };
 
+// Décision du jury (admission) par élève — cf. GET/PUT /classes/{id}/decisions.
+// status/mention peuvent être une vraie valeur enregistrée (is_override=true)
+// ou une simple suggestion dérivée de MG1 (is_override=false) ; "a_examiner"
+// n'est qu'un sentinel d'affichage, jamais une valeur stockable en base.
+type DecisionStatus = "admis" | "admis_avec_rachat" | "non_admis_redouble" | "redouble_exceptionnel" | "reoriente" | "exclu";
+type DecisionEntry = {
+  status: DecisionStatus | "a_examiner" | null;
+  mention: string | null;
+  suggested_status: DecisionStatus | "a_examiner" | null;
+  suggested_mention: string | null;
+  is_override: boolean;
+};
+type JuryMember = { name: string; role: string };
+
 const CATEGORY_LABELS: Record<QuickCategory, string> = { devoir: "Contrôle continu", exam: "Examen" };
+
+// Les 6 seules valeurs acceptées par le backend (CHECK constraint de
+// class_student_decisions.status) — "a_examiner" n'y figure pas exprès.
+const DECISION_STATUS_OPTIONS: { value: DecisionStatus; label: string }[] = [
+  { value: "admis", label: "Admis" },
+  { value: "admis_avec_rachat", label: "Admis avec rachat" },
+  { value: "non_admis_redouble", label: "Non admis — autorisé à redoubler" },
+  { value: "redouble_exceptionnel", label: "Autorisé exceptionnellement à redoubler" },
+  { value: "reoriente", label: "Réorienté vers une autre filière" },
+  { value: "exclu", label: "Exclu" },
+];
+
+const DECISION_LABELS: Record<string, string> = {
+  admis: "Admis",
+  admis_avec_rachat: "Admis avec rachat",
+  non_admis_redouble: "Non admis — autorisé à redoubler",
+  redouble_exceptionnel: "Autorisé exceptionnellement à redoubler",
+  reoriente: "Réorienté vers une autre filière",
+  exclu: "Exclu",
+  a_examiner: "À examiner",
+};
+
+function decisionChipClass(status: string | null): string {
+  if (status === "admis") return "chip-c-green";
+  if (status === "exclu" || status === "non_admis_redouble") return "chip-c-red";
+  if (status === "admis_avec_rachat" || status === "redouble_exceptionnel" || status === "reoriente" || status === "a_examiner") return "chip-c-amber";
+  return "chip-c-blue";
+}
 
 function gradeColor(v: number | null): string {
   if (v == null) return PAL.muted;
@@ -289,6 +331,78 @@ function ClassWeightsModal({ classId, onClose }: { classId: string; onClose: () 
   );
 }
 
+// Jury de la décision finale (admission) d'une classe — distinct du jury
+// d'un Examen (continuous_assessments.jury) : 4 rôles fixes ici (Président
+// du jury d'examens / Membre professionnel / Membre formateur 1 / Membre
+// formatrice 2), cf. GET/PUT /classes/{id}/jury. Même squelette que les
+// autres modals de ce fichier.
+function JuryModal({ classId, onClose }: { classId: string; onClose: () => void }) {
+  const [members, setMembers] = useState<JuryMember[]>(Array.from({ length: 4 }, () => ({ name: "", role: "" })));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get(`/api/classes/${classId}/jury`)
+      .then((d: { members: JuryMember[] }) => {
+        const list = d?.members ?? [];
+        setMembers(Array.from({ length: 4 }, (_, i) => list[i] ?? { name: "", role: "" }));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [classId]);
+
+  function patch(i: number, fields: Partial<JuryMember>) {
+    setMembers(list => list.map((m, j) => (j === i ? { ...m, ...fields } : m)));
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.put(`/api/classes/${classId}/jury`, { members });
+      toast.success("Jury enregistré.");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="anim-fade" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
+      <div className="anim-pop" style={{ background: PAL.paper, borderRadius: 14, padding: 26, width: 460, maxWidth: "94vw", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,.15)" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+          <h2 style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontSize: 20, fontWeight: 500, color: PAL.ink, margin: 0 }}>Jury de la décision</h2>
+          <button onClick={onClose} style={{ background: "none", border: 0, cursor: "pointer", color: PAL.muted, marginTop: 2 }}><X size={17} strokeWidth={1.7} /></button>
+        </div>
+        {loading ? (
+          <div className="shimmer" style={{ height: 16, width: 200, borderRadius: 999, marginTop: 14 }} />
+        ) : (
+          <>
+            <p style={{ fontSize: 12, color: PAL.muted, marginTop: 8, marginBottom: 14, lineHeight: 1.5 }}>
+              4 membres, affichés sur le PV de passage (ex. Président du jury d'examens, Membre professionnel, Membre formateur 1, Membre formatrice 2).
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {members.map((m, i) => (
+                <div key={i} style={{ display: "flex", gap: 8 }}>
+                  <input type="text" placeholder="Nom" value={m.name} onChange={e => patch(i, { name: e.target.value })} style={{ ...fieldStyle, flex: 1 }} />
+                  <input type="text" placeholder="Rôle" value={m.role} onChange={e => patch(i, { role: e.target.value })} style={{ ...fieldStyle, flex: 1 }} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
+          <button onClick={onClose} className="btn-c btn-c-ghost">Annuler</button>
+          <button onClick={save} disabled={saving || loading} className="btn-c btn-c-primary" style={{ opacity: saving || loading ? 0.6 : 1 }}>
+            {saving ? "…" : "Enregistrer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GradesPage() {
   const { roles } = useAuth();
   const isAdmin = roles.includes("admin");
@@ -308,6 +422,17 @@ function GradesPage() {
   const [mg1Summary, setMg1Summary] = useState<Record<string, ClassSummary>>({});
   const [showStageModal, setShowStageModal] = useState(false);
   const [showClassWeights, setShowClassWeights] = useState(false);
+
+  // Décision du jury (admission) par élève + jury de la décision finale
+  // — mêmes conditions d'affichage que mg1Summary (vue admin consolidée).
+  const [decisions, setDecisions] = useState<Record<string, DecisionEntry>>({});
+  const [showJuryModal, setShowJuryModal] = useState(false);
+  const [editingDecision, setEditingDecision] = useState<string | null>(null);
+  const [decisionDraft, setDecisionDraft] = useState<{ status: string; mention: string }>({ status: "", mention: "" });
+  const [savingDecision, setSavingDecision] = useState(false);
+  const [exportingPv, setExportingPv] = useState<"xlsx" | "docx" | null>(null);
+  const [exportingCcGrid, setExportingCcGrid] = useState(false);
+  const [exportingPratiqueGrid, setExportingPratiqueGrid] = useState(false);
 
   // Saisie par module — professeur (ses cours) et admin.
   const [courses, setCourses] = useState<CourseItem[]>([]);
@@ -381,6 +506,19 @@ function GradesPage() {
     if (!isAdmin || moduleId || !classId) { setMg1Summary({}); return; }
     loadMg1Summary(classId);
   }, [isAdmin, moduleId, classId, loadMg1Summary]);
+
+  // Décision du jury par élève — même déclenchement que mg1Summary ci-dessus.
+  const loadDecisions = useCallback((cid: string) => {
+    if (!cid) { setDecisions({}); return; }
+    api.get(`/api/classes/${cid}/decisions`)
+      .then((d: Record<string, DecisionEntry>) => setDecisions(d ?? {}))
+      .catch(() => setDecisions({}));
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin || moduleId || !classId) { setDecisions({}); return; }
+    loadDecisions(classId);
+  }, [isAdmin, moduleId, classId, loadDecisions]);
 
   // Modules assignés à la classe affichée, parmi les cours accessibles
   // (GET /courses filtre déjà par rôle : professeur -> ses cours, admin -> tous).
@@ -483,6 +621,68 @@ function GradesPage() {
     }
   }
 
+  function openDecisionEditor(studentId: string) {
+    const d = decisions[studentId];
+    setDecisionDraft({
+      status: d?.status && d.status !== "a_examiner" ? d.status : "",
+      mention: d?.mention ?? "",
+    });
+    setEditingDecision(studentId);
+  }
+
+  async function saveDecision(studentId: string) {
+    if (!decisionDraft.status) { toast.error("Choisissez une décision."); return; }
+    setSavingDecision(true);
+    try {
+      await api.put(`/api/classes/${classId}/decisions`, {
+        grades: { [studentId]: { status: decisionDraft.status, mention: decisionDraft.mention.trim() || null } },
+      });
+      toast.success("Décision enregistrée.");
+      setEditingDecision(null);
+      loadDecisions(classId);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur lors de l'enregistrement.");
+    } finally {
+      setSavingDecision(false);
+    }
+  }
+
+  async function exportPv(kind: "xlsx" | "docx") {
+    const cls = classes.find(c => c.id === classId);
+    setExportingPv(kind);
+    try {
+      await api.download(`/api/classes/${classId}/pv.${kind}`, `PV_${cls?.name ?? classId}.${kind}`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur lors de l'export.");
+    } finally {
+      setExportingPv(null);
+    }
+  }
+
+  async function exportCcGrid() {
+    const cls = classes.find(c => c.id === classId);
+    setExportingCcGrid(true);
+    try {
+      await api.download(`/api/classes/${classId}/cc-grid.xlsx`, `CC_${cls?.name ?? classId}.xlsx`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur lors de l'export.");
+    } finally {
+      setExportingCcGrid(false);
+    }
+  }
+
+  async function exportPratiqueGrid() {
+    const cls = classes.find(c => c.id === classId);
+    setExportingPratiqueGrid(true);
+    try {
+      await api.download(`/api/classes/${classId}/pratique-grid.xlsx`, `Pratique_${cls?.name ?? classId}.xlsx`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erreur lors de l'export.");
+    } finally {
+      setExportingPratiqueGrid(false);
+    }
+  }
+
   const ranked = [...students].sort((a, b) => {
     const ga = moduleId ? moduleGrades[a.id]?.grade : overallGrades[a.id]?.average;
     const gb = moduleId ? moduleGrades[b.id]?.grade : overallGrades[b.id]?.average;
@@ -517,12 +717,28 @@ function GradesPage() {
       </SectionLabel>
 
       {showCrossModuleView && classId && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <button type="button" onClick={() => setShowStageModal(true)} className="btn-c btn-c-ghost btn-c-sm">
             <SlidersHorizontal size={13} strokeWidth={1.8} />Stage
           </button>
           <button type="button" onClick={() => setShowClassWeights(true)} className="btn-c btn-c-ghost btn-c-sm" title="Pondération de la moyenne générale (MG1)">
             <SlidersHorizontal size={13} strokeWidth={1.8} />Pondération MG1
+          </button>
+          <button type="button" onClick={() => setShowJuryModal(true)} className="btn-c btn-c-ghost btn-c-sm" title="Jury de la décision finale">
+            <Gavel size={13} strokeWidth={1.8} />Jury (décision)
+          </button>
+          <span style={{ width: 1, background: PAL.line, margin: "2px 2px" }} />
+          <button type="button" onClick={() => exportPv("xlsx")} disabled={exportingPv !== null || exportingCcGrid || exportingPratiqueGrid} className="btn-c btn-c-ghost btn-c-sm" style={{ opacity: exportingPv !== null || exportingCcGrid || exportingPratiqueGrid ? 0.6 : 1 }}>
+            <FileSpreadsheet size={13} strokeWidth={1.8} />{exportingPv === "xlsx" ? "Export…" : "Exporter PV (Excel)"}
+          </button>
+          <button type="button" onClick={() => exportPv("docx")} disabled={exportingPv !== null || exportingCcGrid || exportingPratiqueGrid} className="btn-c btn-c-ghost btn-c-sm" style={{ opacity: exportingPv !== null || exportingCcGrid || exportingPratiqueGrid ? 0.6 : 1 }}>
+            <FileText size={13} strokeWidth={1.8} />{exportingPv === "docx" ? "Export…" : "Exporter PV (Word)"}
+          </button>
+          <button type="button" onClick={exportCcGrid} disabled={exportingPv !== null || exportingCcGrid || exportingPratiqueGrid} className="btn-c btn-c-ghost btn-c-sm" style={{ opacity: exportingPv !== null || exportingCcGrid || exportingPratiqueGrid ? 0.6 : 1 }}>
+            <FileSpreadsheet size={13} strokeWidth={1.8} />{exportingCcGrid ? "Export…" : "Exporter Contrôle Continu (Excel)"}
+          </button>
+          <button type="button" onClick={exportPratiqueGrid} disabled={exportingPv !== null || exportingCcGrid || exportingPratiqueGrid} className="btn-c btn-c-ghost btn-c-sm" style={{ opacity: exportingPv !== null || exportingCcGrid || exportingPratiqueGrid ? 0.6 : 1 }}>
+            <FileSpreadsheet size={13} strokeWidth={1.8} />{exportingPratiqueGrid ? "Export…" : "Exporter Examens Pratiques (Excel)"}
           </button>
         </div>
       )}
@@ -685,6 +901,54 @@ function GradesPage() {
                                 ))}
                               </div>
                             )}
+                            {decisions[s.id] && (
+                              <div style={{ padding: "12px 20px", borderBottom: `1px dashed ${PAL.line}` }} onClick={e => e.stopPropagation()}>
+                                <div style={{ fontFamily: sans, fontSize: 10, fontWeight: 600, color: PAL.muted, letterSpacing: ".06em", textTransform: "uppercase" as const, marginBottom: 6 }}>Décision du jury</div>
+                                {editingDecision === s.id ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                    <select
+                                      value={decisionDraft.status}
+                                      onChange={e => setDecisionDraft(d => ({ ...d, status: e.target.value }))}
+                                      style={{ ...fieldStyle, padding: "6px 8px", minWidth: 220 }}
+                                    >
+                                      <option value="">— Choisir —</option>
+                                      {DECISION_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                    <input
+                                      type="text" placeholder="Mention (optionnel)"
+                                      value={decisionDraft.mention}
+                                      onChange={e => setDecisionDraft(d => ({ ...d, mention: e.target.value }))}
+                                      style={{ ...fieldStyle, padding: "6px 8px", width: 160 }}
+                                    />
+                                    <button type="button" onClick={() => saveDecision(s.id)} disabled={savingDecision} className="btn-c btn-c-primary btn-c-sm" style={{ opacity: savingDecision ? 0.6 : 1 }}>
+                                      <Save size={12} strokeWidth={1.8} />{savingDecision ? "…" : "Enregistrer"}
+                                    </button>
+                                    <button type="button" onClick={() => setEditingDecision(null)} className="btn-c btn-c-ghost btn-c-sm"><X size={12} strokeWidth={1.8} /></button>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+                                    onClick={() => openDecisionEditor(s.id)}
+                                    title="Modifier la décision"
+                                  >
+                                    {decisions[s.id].status ? (
+                                      <span className={`chip-c ${decisionChipClass(decisions[s.id].status)}`}>
+                                        {DECISION_LABELS[decisions[s.id].status as string] ?? decisions[s.id].status}
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: 12.5, color: PAL.muted, fontStyle: "italic" }}>Aucune décision pour l'instant</span>
+                                    )}
+                                    {decisions[s.id].mention && (
+                                      <span style={{ fontSize: 12.5, color: PAL.muted }}>{decisions[s.id].mention}</span>
+                                    )}
+                                    {decisions[s.id].status && !decisions[s.id].is_override && (
+                                      <span style={{ fontSize: 10, fontWeight: 600, color: PAL.muted, fontStyle: "italic" }}>proposition</span>
+                                    )}
+                                    <Pencil size={13} strokeWidth={1.8} color={PAL.muted} />
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {!overallGrades[s.id]?.courses?.length ? (
                               <div style={{ padding: "12px 20px", fontSize: 12.5, color: PAL.muted, fontStyle: "italic" }}>Aucune note disponible pour cet élève.</div>
                             ) : (
@@ -734,6 +998,9 @@ function GradesPage() {
       )}
       {showClassWeights && classId && (
         <ClassWeightsModal classId={classId} onClose={() => { setShowClassWeights(false); loadMg1Summary(classId); }} />
+      )}
+      {showJuryModal && classId && (
+        <JuryModal classId={classId} onClose={() => setShowJuryModal(false)} />
       )}
     </div>
   );

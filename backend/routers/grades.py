@@ -1,8 +1,33 @@
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from supabase import Client
 from deps import get_current_user, get_db, CurrentUser
-from models import CourseGradeWeightsUpdate, StageGradesUpsert, ClassGradeWeightsUpdate
+from models import (
+    CourseGradeWeightsUpdate, StageGradesUpsert, ClassGradeWeightsUpdate,
+    ClassDecisionsUpsert, ClassJuryUpdate,
+)
+from utils.excel import XLSX_MEDIA_TYPE
+from utils.pv_docx import render_pv_docx
+from utils.safe_filename import safe_filename
+# NB: utils.pv_excel n'est PAS importé ici en tête de module — son propre
+# top-level fait `from routers.grades import (...)` (noms définis plus bas
+# dans ce fichier), ce qui provoquerait un ImportError circulaire si on
+# l'important ici avant que ces noms existent (confirmé en testant : "cannot
+# import name '_category_average' from partially initialized module
+# 'routers.grades'"). render_pv_excel est donc importé à l'intérieur de
+# l'endpoint qui l'utilise, même technique que le deferred import de
+# utils/pv_docx.py pour sa propre dépendance inverse sur ce module. Même
+# chose pour utils.cc_grid_excel (render_cc_grid_excel) : son top-level fait
+# `from routers.grades import (_class_courses, compute_overall_average)`,
+# donc elle aussi est importée à l'intérieur de son endpoint, pas ici. Et pour
+# utils.pratique_grid_excel (render_pratique_grid_excel), qui importe
+# `_class_courses`/`_category_average`/`_exam_of_record_map`/
+# `compute_class_efcf_averages` depuis ce module — même technique, importée
+# à l'intérieur de son propre endpoint.
+
+DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 router = APIRouter(tags=["grades"])
 
@@ -394,6 +419,107 @@ async def get_class_mg1_summary(
     return compute_class_mg1_summary(db, class_id)
 
 
+def _class_name_for_filename(db: Client, class_id: str) -> str:
+    """Nom de classe pour le Content-Disposition des exports PV — repli sur
+    class_id si la classe n'existe pas/plus (pas de 404 ici, cf.
+    render_pv_docx qui dégrade déjà gracieusement sur une classe introuvable)."""
+    rows = db.from_("classes").select("name").eq("id", class_id).execute().data
+    return (rows[0].get("name") if rows else None) or class_id
+
+
+@router.get("/classes/{class_id}/pv.xlsx")
+async def export_class_pv_xlsx(
+    class_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    """PV de passage (une ligne par élève) au format .xlsx — cf. utils/pv_excel.py."""
+    from utils.pv_excel import render_pv_excel  # import différé : cf. note en tête de fichier
+
+    if not user.is_admin() and not user.is_prof():
+        raise HTTPException(403, "Non autorisé")
+    try:
+        data = render_pv_excel(db, class_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    filename = safe_filename(f"PV_{_class_name_for_filename(db, class_id)}.xlsx")
+    return Response(
+        content=data,
+        media_type=XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/classes/{class_id}/pv.docx")
+async def export_class_pv_docx(
+    class_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    """PV de décision du jury (formule MG1 + tableau d'émargement) au format
+    .docx — cf. utils/pv_docx.py."""
+    if not user.is_admin() and not user.is_prof():
+        raise HTTPException(403, "Non autorisé")
+    data = render_pv_docx(db, class_id)
+    filename = safe_filename(f"PV_{_class_name_for_filename(db, class_id)}.docx")
+    return Response(
+        content=data,
+        media_type=DOCX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/classes/{class_id}/cc-grid.xlsx")
+async def export_class_cc_grid_xlsx(
+    class_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    """Grille de Contrôle Continu (CC) d'une classe — une ligne par élève,
+    une colonne par UF assignée à la classe — au format .xlsx — cf.
+    utils/cc_grid_excel.py."""
+    from utils.cc_grid_excel import render_cc_grid_excel  # import différé : cf. note en tête de fichier
+
+    if not user.is_admin() and not user.is_prof():
+        raise HTTPException(403, "Non autorisé")
+    try:
+        data = render_cc_grid_excel(db, class_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    filename = safe_filename(f"CC_{_class_name_for_filename(db, class_id)}.xlsx")
+    return Response(
+        content=data,
+        media_type=XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/classes/{class_id}/pratique-grid.xlsx")
+async def export_class_pratique_grid_xlsx(
+    class_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    """Grille des Examens pratiques de fin de cursus de formation (EFCF
+    Pratique) d'une classe — une ligne par élève, une colonne par UF
+    assignée à la classe + une colonne STAGE + MPEFCFP1 — au format .xlsx —
+    cf. utils/pratique_grid_excel.py."""
+    from utils.pratique_grid_excel import render_pratique_grid_excel  # import différé : cf. note en tête de fichier
+
+    if not user.is_admin() and not user.is_prof():
+        raise HTTPException(403, "Non autorisé")
+    try:
+        data = render_pratique_grid_excel(db, class_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    filename = safe_filename(f"Pratique_{_class_name_for_filename(db, class_id)}.xlsx")
+    return Response(
+        content=data,
+        media_type=XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/classes/{class_id}/stage-grades")
 async def get_stage_grades(
     class_id: str,
@@ -469,6 +595,165 @@ async def set_class_grade_weights(
         "cc_weight": body.cc_weight,
         "efcf_th_weight": body.efcf_th_weight,
         "efcf_pr_weight": body.efcf_pr_weight,
+        "updated_by": user.id,
+    }).execute()
+    return res.data[0]
+
+
+# ── Décision du jury (admission) + jury de la décision finale ─────────────
+# Réplique la feuille "Modalité de passage de 1ère TS" : par élève, une
+# décision ('admis' / 'admis_avec_rachat' / 'non_admis_redouble' /
+# 'redouble_exceptionnel' / 'reoriente' / 'exclu') + une mention libre —
+# auto-suggérées depuis MG1 (compute_class_mg1_summary) tant qu'aucun admin
+# n'a enregistré de décision réelle dans class_student_decisions (L70).
+
+VALID_DECISION_STATUSES = {
+    "admis", "admis_avec_rachat", "non_admis_redouble",
+    "redouble_exceptionnel", "reoriente", "exclu",
+}
+
+
+def _suggest_mention(mg1: Optional[float]) -> Optional[str]:
+    """Bande de mention auto-suggérée à partir de MG1 — seuils reverse-
+    engineered depuis les couples note/mention réels de l'Excel source
+    (incohérents par endroits entre élèves à MG1 quasi-identique : la
+    mention finale reste à l'appréciation du jury, cf. compute_class_decisions).
+    None si MG1 n'est pas encore calculable (pas assez de notes saisies)."""
+    if mg1 is None:
+        return None
+    if mg1 >= 17:
+        return "Excellent"
+    if mg1 >= 16:
+        return "Très Bien"
+    if mg1 >= 14:
+        return "Bien"
+    if mg1 >= 12:
+        return "Assez Bien"
+    if mg1 >= 10:
+        return "Passable"
+    return "Insuffisant"
+
+
+def compute_class_decisions(db: Client, class_id: str) -> dict[str, dict]:
+    """Décision du jury par élève pour `class_id` — {student_id: {status,
+    mention, suggested_status, suggested_mention, is_override}}.
+
+    MG1 >= 10 suggère status="admis". MG1 < 10 NE choisit PAS automatiquement
+    parmi les 4 issues d'échec (pure appréciation du jury à chaque fois) :
+    suggested_status devient le sentinel "a_examiner" — jamais une valeur
+    stockée en base (class_student_decisions.status reste contraint aux 5
+    valeurs réelles), seulement un signal front-end qu'un choix manuel est
+    requis. MG1 absent (pas encore calculable) → suggested_status=None.
+
+    Toute ligne déjà enregistrée dans class_student_decisions l'emporte sur
+    la suggestion (is_override=True) ; le SELECT est dans un try/except pour
+    dégrader en "tout est suggestion" si L70 n'est pas encore appliquée,
+    plutôt qu'un 500."""
+    mg1_summary = compute_class_mg1_summary(db, class_id)
+
+    try:
+        saved_rows = (
+            db.from_("class_student_decisions").select("student_id, status, mention")
+            .eq("class_id", class_id).execute().data or []
+        )
+    except Exception:
+        saved_rows = []  # L70 pas encore appliquée — tout reste suggestion
+    saved_by_student = {r["student_id"]: r for r in saved_rows}
+
+    out: dict[str, dict] = {}
+    for sid, summary in mg1_summary.items():
+        mg1 = summary.get("mg1")
+        suggested_mention = _suggest_mention(mg1)
+        suggested_status = None if mg1 is None else ("admis" if mg1 >= 10 else "a_examiner")
+
+        saved = saved_by_student.get(sid)
+        out[sid] = {
+            "status": saved["status"] if saved else suggested_status,
+            "mention": saved["mention"] if saved else suggested_mention,
+            "suggested_status": suggested_status,
+            "suggested_mention": suggested_mention,
+            "is_override": saved is not None,
+        }
+    return out
+
+
+@router.get("/classes/{class_id}/decisions")
+async def get_class_decisions(
+    class_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    if not user.is_admin() and not user.is_prof():
+        raise HTTPException(403, "Non autorisé")
+    return compute_class_decisions(db, class_id)
+
+
+@router.put("/classes/{class_id}/decisions")
+async def set_class_decisions(
+    class_id: str,
+    body: ClassDecisionsUpsert,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    if not user.is_admin():
+        raise HTTPException(403, "Réservé aux administrateurs")
+    for entry in body.grades.values():
+        if entry.status not in VALID_DECISION_STATUSES:
+            raise HTTPException(400, f"Statut de décision invalide : {entry.status}")
+
+    existing = (
+        db.from_("class_student_decisions").select("id, student_id")
+        .eq("class_id", class_id).in_("student_id", list(body.grades.keys()))
+        .execute().data or []
+    )
+    by_student = {r["student_id"]: r["id"] for r in existing}
+    decided_at = datetime.now(timezone.utc).isoformat()
+    to_insert = []
+    for student_id, entry in body.grades.items():
+        payload = {
+            "status": entry.status,
+            "mention": entry.mention,
+            "decided_by": user.id,
+            "decided_at": decided_at,
+        }
+        if student_id in by_student:
+            db.from_("class_student_decisions").update(payload).eq("id", by_student[student_id]).execute()
+        else:
+            to_insert.append({"class_id": class_id, "student_id": student_id, **payload})
+    if to_insert:
+        db.from_("class_student_decisions").insert(to_insert).execute()
+    return {"ok": True}
+
+
+@router.get("/classes/{class_id}/jury")
+async def get_class_jury(
+    class_id: str,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    if not user.is_admin() and not user.is_prof():
+        raise HTTPException(403, "Non autorisé")
+    try:
+        rows = db.from_("class_jury").select("*").eq("class_id", class_id).execute().data
+    except Exception:
+        rows = None  # L70 pas encore appliquée
+    if rows:
+        return rows[0]
+    return {"class_id": class_id, "members": [{"name": "", "role": ""} for _ in range(4)]}
+
+
+@router.put("/classes/{class_id}/jury")
+async def set_class_jury(
+    class_id: str,
+    body: ClassJuryUpdate,
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Client, Depends(get_db)],
+):
+    if not user.is_admin():
+        raise HTTPException(403, "Réservé aux administrateurs")
+    res = db.from_("class_jury").upsert({
+        "class_id": class_id,
+        "members": [m.model_dump() for m in body.members],
         "updated_by": user.id,
     }).execute()
     return res.data[0]

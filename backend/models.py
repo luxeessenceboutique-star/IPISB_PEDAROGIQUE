@@ -367,6 +367,26 @@ class ClassGradeWeightsUpdate(BaseModel):
     efcf_pr_weight: float
 
 
+# ── Décision du jury (admission) par élève + jury de classe ────────────────
+class ClassDecisionEntry(BaseModel):
+    status: str
+    mention: Optional[str] = None
+
+
+class ClassDecisionsUpsert(BaseModel):
+    """Saisie des décisions du jury pour les élèves d'une classe —
+    {student_id: {status, mention}}, même forme que StageGradesUpsert /
+    ContinuousAssessmentGradesUpsert."""
+    grades: dict[str, ClassDecisionEntry]
+
+
+class ClassJuryUpdate(BaseModel):
+    """Jury de la décision finale d'une classe (distinct du jury d'un
+    Examen, continuous_assessments.jury) — réutilise JuryMember (name, role)
+    défini plus haut."""
+    members: list[JuryMember]
+
+
 class AnnouncementCreate(BaseModel):
     titre: str
     corps: str
